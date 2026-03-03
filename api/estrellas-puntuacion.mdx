@@ -1,0 +1,206 @@
+---
+title: EstrellasPuntuacion Component
+description: Star rating display/input component
+---
+
+## Import
+
+```tsx
+import { EstrellasPuntuacion } from "@/components/estrellas-puntuacion";
+```
+
+## Usage
+
+### Display Mode
+
+```tsx
+<EstrellasPuntuacion
+  promedio={4.5}
+  total={23}
+  size={20}
+  showNumber
+  showTotal
+/>
+```
+
+Shows: ⭐⭐⭐⭐☆ 4.5 (23)
+
+### Editable Mode
+
+```tsx
+<EstrellasPuntuacion
+  promedio={rating}
+  editable
+  calificacionSeleccionada={rating}
+  onCalificacionChange={setRating}
+  size={32}
+/>
+```
+
+Interactive star selector.
+
+## Props
+
+### promedio
+
+```typescript
+number (required)
+```
+
+Average rating to display (0-5).
+
+### total
+
+```typescript
+number (optional)
+```
+
+Total number of reviews.
+
+### size
+
+```typescript
+number (optional, default: 16)
+```
+
+Star icon size in pixels.
+
+### showNumber
+
+```typescript
+boolean (optional, default: false)
+```
+
+Show numeric rating next to stars.
+
+### showTotal
+
+```typescript
+boolean (optional, default: false)
+```
+
+Show total count in parentheses.
+
+### editable
+
+```typescript
+boolean (optional, default: false)
+```
+
+Enable interactive mode.
+
+### calificacionSeleccionada
+
+```typescript
+number (optional)
+```
+
+Current selection (editable mode).
+
+### onCalificacionChange
+
+```typescript
+(calificacion: number) => void (optional)
+```
+
+Callback when rating changes.
+
+## Features
+
+- **Gold Stars**: Filled stars in #FFD700
+- **Empty Stars**: Muted color for unfilled
+- **Half Stars**: Partial fill for decimals
+- **Touch Areas**: Expanded hitSlop for easier tapping
+- **Accessible**: Proper touch targets
+
+## Examples
+
+### Place Card Rating
+
+```tsx
+<EstrellasPuntuacion
+  promedio={stats.promedio}
+  total={stats.total}
+  size={14}
+  showNumber
+  showTotal
+/>
+```
+
+### Review Form Rating
+
+```tsx
+const [rating, setRating] = useState(0);
+
+<EstrellasPuntuacion
+  promedio={rating}
+  editable
+  calificacionSeleccionada={rating}
+  onCalificacionChange={setRating}
+  size={32}
+/>
+```
+
+### Individual Review Rating
+
+```tsx
+<EstrellasPuntuacion
+  promedio={opinion.calificacion}
+  size={16}
+/>
+```
+
+## Implementation
+
+From `components/estrellas-puntuacion.tsx`:
+
+```tsx
+export function EstrellasPuntuacion(props: Props) {
+  const colors = useColors();
+
+  const renderEstrella = (index: number) => {
+    const valorEstrella = index + 1;
+    let estaSeleccionada = false;
+    let estaParcial = false;
+
+    if (props.editable) {
+      estaSeleccionada = 
+        props.calificacionSeleccionada >= valorEstrella;
+    } else {
+      estaSeleccionada = props.promedio >= valorEstrella;
+      estaParcial = 
+        props.promedio > valorEstrella - 1 &&
+        props.promedio < valorEstrella;
+    }
+
+    return (
+      <TouchableOpacity
+        key={index}
+        onPress={() => props.onCalificacionChange?.(valorEstrella)}
+        disabled={!props.editable}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <IconSymbol
+          name={
+            estaSeleccionada 
+              ? "star.fill" 
+              : estaParcial 
+              ? "star.lefthalf.fill" 
+              : "star"
+          }
+          size={props.size}
+          color={estaSeleccionada || estaParcial ? "#FFD700" : colors.muted}
+        />
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center" }}>
+      {[0, 1, 2, 3, 4].map(renderEstrella)}
+      {props.showNumber && <Text>{props.promedio.toFixed(1)}</Text>}
+      {props.showTotal && props.total && <Text>({props.total})</Text>}
+    </View>
+  );
+}
+```

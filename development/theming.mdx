@@ -1,0 +1,49 @@
+---
+title: Theming
+description: Dark/light mode and styling
+---
+
+## Theme System
+
+### useColors Hook
+
+```tsx
+import { useColors } from "@/hooks/use-colors";
+
+const colors = useColors();
+
+<View style={{ backgroundColor: colors.surface }}>
+  <Text style={{ color: colors.foreground }}>Text</Text>
+</View>
+```
+
+### Theme Colors
+
+- `primary`: Brand color (#0ea5e9)
+- `background`: Main background
+- `surface`: Card backgrounds
+- `foreground`: Primary text
+- `muted`: Secondary text
+- `border`: Borders
+
+### NativeWind
+
+Tailwind CSS for React Native:
+
+```tsx
+<View className="p-4 rounded-xl bg-surface">
+  <Text className="text-lg font-bold text-foreground">
+    Hello
+  </Text>
+</View>
+```
+
+### Dark Mode
+
+Automatic system detection:
+
+```tsx
+import { useColorScheme } from "@/hooks/use-color-scheme";
+
+const { colorScheme } = useColorScheme(); // "light" | "dark"
+```

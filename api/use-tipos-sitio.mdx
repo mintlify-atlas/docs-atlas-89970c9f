@@ -1,0 +1,139 @@
+---
+title: useTiposSitio
+description: Hook for fetching business category types from Supabase
+---
+
+The `useTiposSitio` hook fetches all available business category types (tipos de sitio) from the database. It provides a list of categories that can be used to filter and classify places.
+
+## Usage
+
+```tsx
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+
+function CategoryFilter() {
+  const { tipos, loading, error, refresh } = useTiposSitio();
+
+  if (loading) return <ActivityIndicator />;
+  if (error) return <Text>Error: {error}</Text>;
+
+  return (
+    <View>
+      {tipos.map((tipo) => (
+        <Text key={tipo.id}>{tipo.tipo}</Text>
+      ))}
+    </View>
+  );
+}
+```
+
+## Return Values
+
+<ResponseField name="tipos" type="TipoSitio[]">
+  Array of business category types, ordered alphabetically by type name.
+  
+  <Expandable title="TipoSitio">
+    <ResponseField name="id" type="number">
+      Unique identifier for the category type
+    </ResponseField>
+    <ResponseField name="tipo" type="string">
+      Category name (e.g., "Restaurante", "Cafetería", "Tienda")
+    </ResponseField>
+    <ResponseField name="descripcion" type="string | null">
+      Optional description of the category
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="loading" type="boolean">
+  Loading state - `true` while fetching data from Supabase
+</ResponseField>
+
+<ResponseField name="error" type="string | null">
+  Error message if the fetch failed, `null` otherwise
+</ResponseField>
+
+<ResponseField name="refresh" type="() => Promise<void>">
+  Function to manually refresh the category types from the database
+</ResponseField>
+
+## Data Source
+
+This hook queries the `tipos_sitio` table in Supabase:
+
+```sql
+SELECT id, tipo, descripcion
+FROM tipos_sitio
+ORDER BY tipo;
+```
+
+## Example: Category Carousel
+
+```tsx
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+import { TipoSitioChipCarousel } from "@/components/tipo-sitio-chip-carousel";
+
+function PlaceList() {
+  const { tipos } = useTiposSitio();
+  const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+
+  return (
+    <View>
+      <TipoSitioChipCarousel
+        tipos={tipos}
+        selectedTipoId={selectedTipoId}
+        onSelectTipo={setSelectedTipoId}
+      />
+      {/* Filtered place list */}
+    </View>
+  );
+}
+```
+
+## Example: Error Handling
+
+```tsx
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+
+function CategorySelector() {
+  const { tipos, loading, error, refresh } = useTiposSitio();
+
+  if (loading) {
+    return <ActivityIndicator size="large" />;
+  }
+
+  if (error) {
+    return (
+      <View>
+        <Text>Failed to load categories: {error}</Text>
+        <Button title="Retry" onPress={refresh} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={tipos}
+      keyExtractor={(item) => item.id.toString()}
+      renderItem={({ item }) => (
+        <TouchableOpacity>
+          <Text>{item.tipo}</Text>
+          {item.descripcion && <Text>{item.descripcion}</Text>}
+        </TouchableOpacity>
+      )}
+    />
+  );
+}
+```
+
+## Notes
+
+- Categories are automatically fetched when the component mounts
+- Results are ordered alphabetically by category name
+- Empty array is returned if fetch fails
+- Used in conjunction with `TipoSitioChipCarousel` for filtering
+
+## Related
+
+- [TipoSitioChipCarousel](/api/tipo-sitio-chip-carousel) - Component for displaying category chips
+- [useSitiosRelevantes](/api/use-sitios-relevantes) - Hook for fetching places
+- [Categories Feature](/features/categories) - Category filtering system

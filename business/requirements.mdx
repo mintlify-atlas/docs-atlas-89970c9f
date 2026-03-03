@@ -1,0 +1,312 @@
+---
+title: Business Requirements
+description: Required information and guidelines for business listings
+---
+
+## Overview
+
+This guide outlines the requirements and best practices for adding businesses to Por el Barrio.
+
+## Required Fields
+
+Every business listing must include:
+
+<ParamField path="nombre" type="string" required>
+  Business name as it should appear in the app
+  
+  **Example:** `"Restaurante El Buen Sabor"`
+</ParamField>
+
+<ParamField path="tipo_sitio_id" type="number" required>
+  Category ID from the `tipos_sitio` table
+  
+  **Example:** `1` (Restaurant), `2` (Shop), `3` (Service)
+</ParamField>
+
+<ParamField path="provincia_id" type="string" required>
+  Province ID from the `provincia` table
+  
+  **Example:** `"1"` (La Habana)
+</ParamField>
+
+<ParamField path="municipio_id" type="string" required>
+  Municipality ID from the `municipio` table
+  
+  **Example:** `"101"` (Plaza de la Revolución)
+</ParamField>
+
+<ParamField path="localizacion" type="string" required>
+  GPS coordinates in "latitude,longitude" format
+  
+  **Example:** `"23.13194,-82.38304"`
+  
+  <Info>
+    Use Google Maps to find coordinates: Right-click a location and select "What's here?"
+  </Info>
+</ParamField>
+
+## Recommended Fields
+
+Highly recommended for better user experience:
+
+<ParamField path="descripcion" type="string">
+  Brief description of the business (200-500 characters)
+  
+  **Example:** `"Restaurante de comida criolla con especialidad en arroz con pollo y ropa vieja. Ambiente familiar y precios accesibles."`
+</ParamField>
+
+<ParamField path="direccion" type="string">
+  Physical address for easy location
+  
+  **Example:** `"Calle 23 #456 entre 18 y 20, Vedado"`
+</ParamField>
+
+<ParamField path="telefono" type="number">
+  Contact phone number (no spaces or symbols)
+  
+  **Example:** `53123456` or `78901234`
+</ParamField>
+
+<ParamField path="imagenes" type="string">
+  Comma-separated list of image URLs
+  
+  **Example:** `"https://example.com/img1.jpg,https://example.com/img2.jpg"`
+  
+  <Warning>
+    Images must be publicly accessible URLs. Supabase Storage is recommended.
+  </Warning>
+</ParamField>
+
+## Optional Fields
+
+<ParamField path="ofertas" type="string">
+  Current promotions or special offers
+  
+  **Example:** `"Descuento 10% en almuerzos de lunes a viernes. 2x1 en postres los fines de semana."`
+</ParamField>
+
+<ParamField path="menus" type="json">
+  Menu information (JSON format)
+  
+  **Example:**
+  ```json
+  {
+    "platos_principales": [
+      { "nombre": "Arroz con pollo", "precio": 150 },
+      { "nombre": "Ropa vieja", "precio": 180 }
+    ]
+  }
+  ```
+</ParamField>
+
+## Category Guidelines
+
+### Available Categories
+
+Default categories (extend as needed):
+
+| ID | Category | Description | Examples |
+|----|----------|-------------|----------|
+| 1 | Restaurant | Food service | Restaurants, cafes, food stands |
+| 2 | Shop | Retail | Clothing, electronics, groceries |
+| 3 | Service | Professional services | Salons, repairs, consulting |
+| 4 | Entertainment | Leisure | Cinemas, parks, bars |
+| 5 | Health | Medical services | Pharmacies, clinics, gyms |
+| 6 | Education | Learning | Schools, tutoring, workshops |
+
+### Adding Categories
+
+```sql
+INSERT INTO tipos_sitio (tipo, descripcion)
+VALUES ('Farmacia', 'Farmacias y servicios de salud');
+```
+
+## Image Guidelines
+
+### Format & Size
+
+<Check>
+  **Formats**: JPG, PNG, WebP
+</Check>
+
+<Check>
+  **Dimensions**: Minimum 800x600px, recommended 1200x900px
+</Check>
+
+<Check>
+  **Aspect Ratio**: 4:3 or 16:9 preferred
+</Check>
+
+<Check>
+  **File Size**: Under 2MB per image
+</Check>
+
+### Content
+
+<Tip>
+  **Good Images:**
+  - Well-lit, clear photos
+  - Show the business exterior or interior
+  - Display products or services
+  - Professional or high-quality amateur photography
+</Tip>
+
+<Warning>
+  **Avoid:**
+  - Blurry or dark photos
+  - Images with watermarks
+  - Copyrighted images without permission
+  - Irrelevant or misleading content
+</Warning>
+
+### Hosting
+
+Recommended: **Supabase Storage**
+
+<Steps>
+  <Step title="Create Public Bucket">
+    In Supabase dashboard, create a public bucket named `business-images`.
+  </Step>
+  
+  <Step title="Upload Images">
+    Upload images via dashboard or API.
+  </Step>
+  
+  <Step title="Get Public URL">
+    ```
+    https://<project>.supabase.co/storage/v1/object/public/business-images/nombre-negocio-1.jpg
+    ```
+  </Step>
+  
+  <Step title="Add to Database">
+    Use the public URL in the `imagenes` field.
+  </Step>
+</Steps>
+
+## Location Data
+
+### GPS Coordinates
+
+Coordinates must be in decimal degrees format:
+
+```
+latitude,longitude
+```
+
+**Valid Examples:**
+- `23.13194,-82.38304` (Havana)
+- `22.40694,-79.96472` (Santa Clara)
+- `20.02490,-75.82740` (Santiago de Cuba)
+
+**Invalid Examples:**
+- `23°07'55.0"N 82°22'59.0"W` (degrees/minutes/seconds)
+- `-82.38304,23.13194` (reversed)
+- `23.13194, -82.38304` (with space)
+
+### Finding Coordinates
+
+<Tabs>
+  <Tab title="Google Maps">
+    1. Right-click the location on Google Maps
+    2. Click "What's here?"
+    3. Coordinates appear at the bottom
+    4. Click to copy in `lat,lng` format
+  </Tab>
+  
+  <Tab title="GPS App">
+    Use a GPS app on mobile device at the business location.
+  </Tab>
+  
+  <Tab title="Address Geocoding">
+    Use a geocoding service to convert address to coordinates.
+  </Tab>
+</Tabs>
+
+### Province & Municipality
+
+Must match existing records in the database:
+
+```sql
+-- Check available provinces
+SELECT id, nombre FROM provincia ORDER BY nombre;
+
+-- Check municipalities for a province
+SELECT id, nombre FROM municipio 
+WHERE provincia_id = '1' 
+ORDER BY nombre;
+```
+
+## Data Quality Standards
+
+### Completeness
+
+<Check>Minimum 5 fields filled (required + 1 recommended)</Check>
+<Check>At least 1 image</Check>
+<Check>Description between 100-500 characters</Check>
+
+### Accuracy
+
+<Check>Verified GPS coordinates match address</Check>
+<Check>Phone number is active</Check>
+<Check>Information is current (not outdated)</Check>
+
+### Formatting
+
+<Check>No excessive capitalization (e.g., "RESTAURANT" → "Restaurant")</Check>
+<Check>Proper punctuation and grammar</Check>
+<Check>No special characters in names (except ñ, á, etc.)</Check>
+
+## Validation Checklist
+
+Before adding a business, verify:
+
+- [ ] All required fields are present
+- [ ] Category ID exists in `tipos_sitio`
+- [ ] Province ID exists in `provincia`
+- [ ] Municipality ID exists in `municipio` and matches province
+- [ ] GPS coordinates are in correct format
+- [ ] GPS coordinates are within Cuba bounds (19°-24°N, 74°-85°W)
+- [ ] Image URLs are accessible (test in browser)
+- [ ] Phone number has no spaces or dashes
+- [ ] Description is clear and informative
+- [ ] No duplicate entries for the same business
+
+## Updating Existing Listings
+
+To update a business:
+
+```sql
+UPDATE sitios_relevantes
+SET
+  descripcion = 'Nueva descripción',
+  telefono = 53999888,
+  ofertas = 'Nueva oferta especial'
+WHERE id = 123;
+```
+
+<Info>
+  The `contador_opiniones` field is automatically managed and should not be manually updated.
+</Info>
+
+## Removing Listings
+
+To remove a business:
+
+```sql
+DELETE FROM sitios_relevantes WHERE id = 123;
+```
+
+<Warning>
+  This will also remove all associated reviews. Consider a `deleted_at` soft delete column instead.
+</Warning>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Onboarding Flow" icon="whatsapp" href="/business/onboarding">
+    How businesses are added to the app
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Complete table structure
+  </Card>
+</CardGroup>

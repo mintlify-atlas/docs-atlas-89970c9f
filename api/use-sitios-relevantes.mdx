@@ -1,0 +1,86 @@
+---
+title: useSitiosRelevantes Hook
+description: Places data fetching hook
+---
+
+## Import
+
+```tsx
+import { useSitiosRelevantes } from "@/hooks/use-sitios-relevantes";
+```
+
+## Usage
+
+```tsx
+const { sitios, loading, error, refresh } = useSitiosRelevantes();
+```
+
+## Return Values
+
+### sitios
+
+```typescript
+SitioRelevante[]
+```
+
+Array of places:
+
+```typescript
+type SitioRelevante = {
+  id: number;
+  nombre: string;
+  localizacion: string;
+  descripcion: string | null;
+  imagenes: string | null;
+  ofertas: string | null;
+  tipo_sitio_id: number | null;
+  direccion: string | null;
+  telefono: number | null;
+  contador_opiniones: number;
+  provincia_id: string | null;
+  municipio_id: string | null;
+};
+```
+
+### loading
+
+```typescript
+boolean
+```
+
+True while fetching.
+
+### error
+
+```typescript
+string | null
+```
+
+Error message if fetch fails.
+
+### refresh
+
+```typescript
+() => Promise<void>
+```
+
+Refetches all places.
+
+## Example
+
+```tsx
+function PlacesList() {
+  const { sitios, loading, error, refresh } = useSitiosRelevantes();
+
+  if (loading) return <ActivityIndicator />;
+  if (error) return <ErrorView message={error} onRetry={refresh} />;
+
+  return (
+    <ScrollView>
+      {sitios.map(sitio => (
+        <SitioRelevanteCard key={sitio.id} sitio={sitio} />
+      ))}
+    </ScrollView>
+  );
+}
+```

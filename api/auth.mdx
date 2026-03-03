@@ -1,0 +1,54 @@
+---
+title: Auth API
+description: Authentication tRPC endpoints
+---
+
+## Endpoints
+
+### auth.me
+
+Get current user:
+
+```tsx
+const { data: user, isLoading } = trpc.auth.me.useQuery();
+```
+
+**Returns:**
+```typescript
+User | null
+```
+
+### auth.logout
+
+Logout current user:
+
+```tsx
+const logout = trpc.auth.logout.useMutation();
+
+await logout.mutateAsync();
+```
+
+**Returns:**
+```typescript
+{ success: true }
+```
+
+## Example Usage
+
+```tsx
+function ProfileButton() {
+  const { data: user } = trpc.auth.me.useQuery();
+  const logout = trpc.auth.logout.useMutation();
+
+  if (!user) return <LoginButton />;
+
+  return (
+    <View>
+      <Text>{user.name}</Text>
+      <Button onPress={() => logout.mutate()}>
+        Logout
+      </Button>
+    </View>
+  );
+}
+```

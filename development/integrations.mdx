@@ -1,0 +1,52 @@
+---
+title: Integrations
+description: Third-party service integrations
+---
+
+## Supabase
+
+### Database
+
+PostgreSQL database for all app data.
+
+**Setup:**
+1. Create Supabase project
+2. Run migrations
+3. Add credentials to `.env`
+
+### Storage
+
+File storage for business images:
+
+```typescript
+const { data } = await supabase.storage
+  .from("business-images")
+  .upload("image.jpg", file);
+```
+
+### Authentication
+
+Supabase Auth (currently using Manus OAuth).
+
+## WhatsApp Integration
+
+Business onboarding via WhatsApp:
+
+```typescript
+const url = `https://wa.me/${PHONE}?text=${message}`;
+Linking.openURL(url);
+```
+
+## Expo Services
+
+- **Expo Go**: Quick testing
+- **EAS Build**: Production builds
+- **Expo Updates**: OTA updates
+
+## Maps
+
+Location display using coordinates:
+
+```tsx
+<UbicacionMapa localizacion="23.13194,-82.38304" />
+```

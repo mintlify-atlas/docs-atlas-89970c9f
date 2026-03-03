@@ -1,0 +1,61 @@
+---
+title: Running Locally
+description: Run the app locally for development
+---
+
+## Start Development
+
+### Both Services
+
+```bash
+pnpm dev
+```
+
+Runs:
+- API server on port 3000
+- Expo Metro on port 8081
+
+### Separate Processes
+
+```bash
+# Terminal 1: API Server
+pnpm dev:server
+
+# Terminal 2: Expo Metro
+pnpm dev:metro
+```
+
+## Platform-Specific
+
+### iOS
+
+```bash
+pnpm ios
+```
+
+### Android
+
+```bash
+pnpm android
+```
+
+### Web
+
+```bash
+pnpm dev:metro
+# Press 'w' for web
+```
+
+## Troubleshooting
+
+### Clear Cache
+
+```bash
+pnpm start --clear
+```
+
+### Reset Pods (iOS)
+
+```bash
+cd ios && rm -rf Pods && pod install
+```

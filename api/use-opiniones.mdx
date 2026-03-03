@@ -1,0 +1,124 @@
+---
+title: useOpiniones Hook
+description: Reviews management hook
+---
+
+## Import
+
+```tsx
+import { useOpiniones } from "@/hooks/use-opiniones";
+```
+
+## Usage
+
+```tsx
+const {
+  opiniones,
+  stats,
+  loading,
+  error,
+  refresh,
+  crearOpinion,
+} = useOpiniones(sitioId);
+```
+
+## Parameters
+
+### sitioId
+
+```typescript
+number | null
+```
+
+ID of the place to fetch reviews for.
+
+## Return Values
+
+### opiniones
+
+```typescript
+Opinion[]
+```
+
+Array of reviews:
+
+```typescript
+type Opinion = {
+  id: string;
+  sitio_id: number;
+  calificacion: number;
+  comentario: string | null;
+  autor_texto: string | null;
+  creado_at: string;
+};
+```
+
+### stats
+
+```typescript
+OpinionStats
+```
+
+Review statistics:
+
+```typescript
+type OpinionStats = {
+  promedio: number; // Average rating (0-5)
+  total: number; // Total reviews
+  distribucion: { [key: number]: number }; // Count per rating
+};
+```
+
+### loading
+
+```typescript
+boolean
+```
+
+### error
+
+```typescript
+string | null
+```
+
+### refresh
+
+```typescript
+() => Promise<void>
+```
+
+Refetches reviews.
+
+### crearOpinion
+
+```typescript
+(
+  sitioId: number,
+  calificacion: number,
+  comentario: string | null,
+  autorTexto: string | null
+) => Promise<void>
+```
+
+Creates a new review.
+
+## Example
+
+```tsx
+function ReviewsList({ sitioId }: { sitioId: number }) {
+  const { opiniones, stats, crearOpinion } = useOpiniones(sitioId);
+
+  const handleSubmit = async (rating: number, comment: string) => {
+    await crearOpinion(sitioId, rating, comment, "John Doe");
+  };
+
+  return (
+    <View>
+      <Text>Average: {stats.promedio} ({stats.total} reviews)</Text>
+      {opiniones.map(opinion => (
+        <ReviewCard key={opinion.id} opinion={opinion} />
+      ))}
+    </View>
+  );
+}
+```

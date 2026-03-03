@@ -1,0 +1,187 @@
+---
+title: TipoSitioChipCarousel
+description: Horizontal scrolling carousel of category filter chips with count badges
+---
+
+The `TipoSitioChipCarousel` component displays a horizontal scrolling list of category chips that allows users to filter places by business type. Each chip can display a count badge showing the number of available places in that category.
+
+## Props
+
+<ParamField path="tipos" type="TipoSitio[]" required>
+  Array of business category types to display as chips. Each type should have `id`, `tipo` (name), and optional `descripcion`.
+</ParamField>
+
+<ParamField path="selectedTipoId" type="number | null" required>
+  The ID of the currently selected category. `null` means "All" categories are selected.
+</ParamField>
+
+<ParamField path="onSelectTipo" type="(tipoId: number | null) => void" required>
+  Callback function called when a category chip is tapped. Receives the category ID or `null` for "All".
+</ParamField>
+
+<ParamField path="countsByTipoId" type="Record<number, number>">
+  Optional mapping of category IDs to the number of places in each category. Used to display count badges on chips.
+</ParamField>
+
+<ParamField path="totalCount" type="number">
+  Optional total count of all places. Displayed as a badge on the "All" chip when selected.
+</ParamField>
+
+## Usage
+
+```tsx
+import { TipoSitioChipCarousel } from "@/components/tipo-sitio-chip-carousel";
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+import { useState } from "react";
+
+function PlaceFilter() {
+  const { tipos } = useTiposSitio();
+  const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+
+  return (
+    <TipoSitioChipCarousel
+      tipos={tipos}
+      selectedTipoId={selectedTipoId}
+      onSelectTipo={setSelectedTipoId}
+    />
+  );
+}
+```
+
+## With Count Badges
+
+```tsx
+import { TipoSitioChipCarousel } from "@/components/tipo-sitio-chip-carousel";
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+import { useSitiosRelevantes } from "@/hooks/use-sitios-relevantes";
+import { useState, useMemo } from "react";
+
+function PlaceFilterWithCounts() {
+  const { tipos } = useTiposSitio();
+  const { sitios } = useSitiosRelevantes();
+  const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+
+  // Calculate counts per category
+  const countsByTipoId = useMemo(() => {
+    const counts: Record<number, number> = {};
+    for (const sitio of sitios) {
+      const tipoId = sitio.tipo_sitio_id;
+      if (tipoId != null) {
+        counts[tipoId] = (counts[tipoId] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [sitios]);
+
+  return (
+    <TipoSitioChipCarousel
+      tipos={tipos}
+      selectedTipoId={selectedTipoId}
+      onSelectTipo={setSelectedTipoId}
+      countsByTipoId={countsByTipoId}
+      totalCount={sitios.length}
+    />
+  );
+}
+```
+
+## Visual Behavior
+
+### Chip States
+
+- **Unselected**: Light background with border, dark text
+- **Selected**: Primary color background, white text, displays count badge
+- **Badge**: White background when chip is selected, shows the count
+
+### Layout
+
+- Horizontal scrolling list with no scroll indicator
+- 10px gap between chips
+- Rounded pill-shaped chips
+- "Todos" (All) chip always appears first
+
+### Interaction
+
+- Tapping a chip calls `onSelectTipo` with the category ID
+- Tapping "Todos" calls `onSelectTipo(null)`
+- 0.8 opacity on press for visual feedback
+
+## Implementation Details
+
+From `components/tipo-sitio-chip-carousel.tsx:44-91`:
+
+```tsx
+<TouchableOpacity
+  onPress={() => onSelectTipo(null)}
+  activeOpacity={0.8}
+  className="rounded-full px-4 py-2.5"
+  style={{
+    backgroundColor:
+      selectedTipoId === null ? colors.primary : colors.surface,
+    borderWidth: 1,
+    borderColor:
+      selectedTipoId === null ? colors.primary : colors.border,
+  }}
+>
+  <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+    <Text
+      className="text-sm font-medium"
+      style={{
+        color: selectedTipoId === null ? "#FFFFFF" : colors.foreground,
+      }}
+    >
+      Todos
+    </Text>
+    {showTotalBadge && (
+      <View
+        style={{
+          minWidth: 18,
+          paddingHorizontal: 6,
+          paddingVertical: 1,
+          borderRadius: 999,
+          backgroundColor:
+            selectedTipoId === null ? "#FFFFFF" : colors.surface,
+        }}
+      >
+        <Text
+          style={{
+            fontSize: 11,
+            fontWeight: "600",
+            color:
+              selectedTipoId === null ? colors.primary : colors.muted,
+          }}
+        >
+          {totalBadge}
+        </Text>
+      </View>
+    )}
+  </View>
+</TouchableOpacity>
+```
+
+## Integration Example
+
+Complete example from `app/(drawer)/(tabs)/index.tsx:210-218`:
+
+```tsx
+<TipoSitioChipCarousel
+  tipos={tiposDisponibles}
+  selectedTipoId={selectedTipoId}
+  onSelectTipo={handleSelectTipo}
+  countsByTipoId={countsByTipoId}
+  totalCount={totalSitios}
+/>
+```
+
+## Notes
+
+- Uses `useColors` hook for theme-aware styling
+- Integrates with NativeWind for responsive design
+- Badge only shows when chip is selected and count > 0
+- "Todos" badge shows when no category is selected and total > 0
+
+## Related
+
+- [useTiposSitio](/api/use-tipos-sitio) - Hook for fetching category types
+- [Categories Feature](/features/categories) - Category filtering system
+- [useColors](/development/theming) - Theme color hook

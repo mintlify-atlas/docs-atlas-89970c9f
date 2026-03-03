@@ -1,0 +1,51 @@
+---
+title: Navigation
+description: Expo Router file-based navigation
+---
+
+## Expo Router
+
+File-based routing system.
+
+### File Structure
+
+```
+app/
+  (drawer)/
+    (tabs)/
+      index.tsx       -> Home
+      detalles.tsx    -> Details
+      profile.tsx     -> Profile
+```
+
+### Navigation
+
+```tsx
+import { router } from "expo-router";
+
+// Navigate
+router.push("/(drawer)/(tabs)/detalles");
+
+// With params
+router.push({
+  pathname: "/detalles",
+  params: { id: "123" }
+});
+
+// Go back
+router.back();
+```
+
+### Reading Params
+
+```tsx
+import { useLocalSearchParams } from "expo-router";
+
+const { id } = useLocalSearchParams<{ id: string }>();
+```
+
+## Drawer + Tabs Layout
+
+- Drawer: Swipe from left
+- Tabs: Bottom navigation
+- Both: File-based configuration

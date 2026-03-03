@@ -1,0 +1,99 @@
+---
+title: Components
+description: Reusable React components
+---
+
+## Component Library
+
+### SitioRelevanteCard
+
+Place card component:
+
+```tsx
+import { SitioRelevanteCard } from "@/components/sitio-relevante-card";
+
+<SitioRelevanteCard
+  sitio={sitio}
+  onPress={() => router.push("/detalles")}
+/>
+```
+
+**Features:**
+- Image display
+- Category chip overlay
+- Rating stars
+- Description preview
+
+### FormularioOpinion
+
+Review form:
+
+```tsx
+import { FormularioOpinion } from "@/components/formulario-opinion";
+
+<FormularioOpinion
+  sitioId={123}
+  onCreateOpinion={crearOpinion}
+  onSuccess={() => refresh()}
+/>
+```
+
+### EstrellasPuntuacion
+
+Star rating display/input:
+
+```tsx
+import { EstrellasPuntuacion } from "@/components/estrellas-puntuacion";
+
+// Display mode
+<EstrellasPuntuacion
+  promedio={4.5}
+  total={23}
+  showNumber
+  showTotal
+/>
+
+// Editable mode
+<EstrellasPuntuacion
+  editable
+  calificacionSeleccionada={rating}
+  onCalificacionChange={setRating}
+/>
+```
+
+### TipoSitioChipCarousel
+
+Category filter carousel:
+
+```tsx
+import { TipoSitioChipCarousel } from "@/components/tipo-sitio-chip-carousel";
+
+<TipoSitioChipCarousel
+  tipos={categories}
+  selectedTipoId={selected}
+  onSelectTipo={setSelected}
+  countsByTipoId={counts}
+/>
+```
+
+## UI Components
+
+### ScreenContainer
+
+```tsx
+import { ScreenContainer } from "@/components/screen-container";
+
+<ScreenContainer edges={["left", "right"]}>
+  {/* Content */}
+</ScreenContainer>
+```
+
+### Collapsible
+
+```tsx
+import { Collapsible } from "@/components/ui/collapsible";
+
+<Collapsible title="Click to expand">
+  <Text>Hidden content</Text>
+</Collapsible>
+```

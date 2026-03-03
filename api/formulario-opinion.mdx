@@ -1,0 +1,158 @@
+---
+title: FormularioOpinion Component
+description: Review form component reference
+---
+
+## Import
+
+```tsx
+import { FormularioOpinion } from "@/components/formulario-opinion";
+```
+
+## Usage
+
+```tsx
+<FormularioOpinion
+  sitioId={123}
+  onCreateOpinion={crearOpinion}
+  onSuccess={() => refresh()}
+/>
+```
+
+## Props
+
+### sitioId
+
+```typescript
+number (required)
+```
+
+ID of the place being reviewed.
+
+### onCreateOpinion
+
+```typescript
+(
+  sitioId: number,
+  calificacion: number,
+  comentario: string | null,
+  autorTexto: string | null
+) => Promise<void> (required)
+```
+
+Callback to create the review.
+
+### onSuccess
+
+```typescript
+() => void (optional)
+```
+
+Callback after successful submission.
+
+## Features
+
+- **Author Display**: Shows current user name from profile
+- **Star Rating**: Interactive 5-star selector
+- **Comment Field**: Optional text input (500 char limit)
+- **Character Counter**: Live count display
+- **Validation**: Ensures rating selected and name configured
+- **Submit Button**: Disabled until valid
+
+## Example
+
+```tsx
+function ReviewSection({ sitioId }: { sitioId: number }) {
+  const { crearOpinion, refresh } = useOpiniones(sitioId);
+
+  return (
+    <Collapsible title="Write a review">
+      <FormularioOpinion
+        sitioId={sitioId}
+        onCreateOpinion={crearOpinion}
+        onSuccess={() => {
+          refresh();
+          Alert.alert("Success", "Review posted!");
+        }}
+      />
+    </Collapsible>
+  );
+}
+```
+
+## Validation Rules
+
+<Warning>
+  - User must have a name in their profile
+  - Star rating is required (1-5)
+  - Comment is optional
+  - Comment max 500 characters
+</Warning>
+
+## Implementation
+
+From `components/formulario-opinion.tsx`:
+
+```tsx
+export function FormularioOpinion(props: Props) {
+  const { profile } = useProfile();
+  const [calificacion, setCalificacion] = useState(0);
+  const [comentario, setComentario] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const autorDesdePerfil = profile.name || profile.email || null;
+  const puedePublicar = calificacion > 0 && autorDesdePerfil && !loading;
+
+  const handleSubmit = async () => {
+    if (!puedePublicar) return;
+
+    setLoading(true);
+    try {
+      await props.onCreateOpinion(
+        props.sitioId,
+        calificacion,
+        comentario || null,
+        autorDesdePerfil
+      );
+      setCalificacion(0);
+      setComentario("");
+      props.onSuccess?.();
+    } catch (error) {
+      Alert.alert("Error", "Failed to post review");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <View>
+      {/* Author */}
+      <Text>Reviewing as: {autorDesdePerfil}</Text>
+
+      {/* Star rating */}
+      <EstrellasPuntuacion
+        editable
+        calificacionSeleccionada={calificacion}
+        onCalificacionChange={setCalificacion}
+      />
+
+      {/* Comment */}
+      <TextInput
+        value={comentario}
+        onChangeText={setComentario}
+        maxLength={500}
+        multiline
+      />
+      <Text>{comentario.length}/500</Text>
+
+      {/* Submit */}
+      <TouchableOpacity
+        onPress={handleSubmit}
+        disabled={!puedePublicar}
+      >
+        <Text>Submit</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+```

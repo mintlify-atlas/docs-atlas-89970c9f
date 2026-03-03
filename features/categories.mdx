@@ -1,0 +1,332 @@
+---
+title: Categories
+description: Category system for organizing and filtering places
+---
+
+## Overview
+
+Por el Barrio uses a flexible category system (`tipos_sitio`) to organize places into logical groups. Categories are dynamically loaded from Supabase and displayed as filterable chips.
+
+## Database Schema
+
+Categories are stored in the `tipos_sitio` table:
+
+```sql
+CREATE TABLE tipos_sitio (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  tipo VARCHAR(100) NOT NULL,
+  descripcion TEXT
+);
+```
+
+**Fields:**
+- `id`: Unique identifier
+- `tipo`: Category name (e.g., "Restaurant", "Shop", "Service")
+- `descripcion`: Optional description of the category
+
+## Data Hook
+
+### useTiposSitio
+
+The `useTiposSitio` hook fetches all categories:
+
+```tsx
+import { useTiposSitio } from "@/hooks/use-tipos-sitio";
+
+export function useTiposSitio() {
+  const [tipos, setTipos] = useState<TipoSitio[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchTipos = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from("tipos_sitio")
+      .select("id, tipo, descripcion")
+      .order("tipo");
+    
+    if (err) throw err;
+    setTipos(data as TipoSitio[]);
+  }, []);
+
+  useEffect(() => {
+    fetchTipos();
+  }, [fetchTipos]);
+
+  return { tipos, loading, error, refresh: fetchTipos };
+}
+```
+
+**TypeScript Type:**
+
+```tsx
+export type TipoSitio = {
+  id: number;
+  tipo: string;
+  descripcion: string | null;
+};
+```
+
+## Category Display
+
+### TipoSitioChip Component
+
+Individual category chips are rendered using `TipoSitioChip`:
+
+```tsx
+import { TipoSitioChip } from "@/components/ui/tipo-sitio";
+
+<TipoSitioChip tipo={tipoSitio} overlay />
+```
+
+**Props:**
+- `tipo`: TipoSitio object
+- `overlay`: Boolean, renders as overlay on images
+
+**Rendering:**
+
+```tsx
+export function TipoSitioChip({ tipo, overlay = false }) {
+  const colors = useColors();
+  
+  return (
+    <View
+      style={[
+        styles.chip,
+        overlay && styles.overlay,
+        { backgroundColor: colors.primary }
+      ]}
+    >
+      <Text style={{ color: "#FFFFFF" }}>{tipo.tipo}</Text>
+    </View>
+  );
+}
+```
+
+### TipoSitioChipCarousel
+
+The horizontal scrollable category filter:
+
+```tsx
+import { TipoSitioChipCarousel } from "@/components/tipo-sitio-chip-carousel";
+
+<TipoSitioChipCarousel
+  tipos={tiposDisponibles}
+  selectedTipoId={selectedTipoId}
+  onSelectTipo={setSelectedTipoId}
+  countsByTipoId={countsByTipoId}
+  totalCount={totalSitios}
+/>
+```
+
+**Props:**
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `tipos` | `TipoSitio[]` | Array of categories to display |
+| `selectedTipoId` | `number \| null` | Currently selected category ID |
+| `onSelectTipo` | `(id: number \| null) => void` | Callback when category selected |
+| `countsByTipoId` | `Record<number, number>` | Count of places per category |
+| `totalCount` | `number` | Total count for "Todos" chip |
+
+## Filtering Logic
+
+### Available Categories
+
+Only categories that have places in the user's province are shown:
+
+```tsx
+const tiposDisponibles = useMemo(() => {
+  // Get all category IDs present in filtered places
+  const idsPresentes = new Set(
+    sitiosPorProvincia
+      .map((s) => s.tipo_sitio_id)
+      .filter((id): id is number => id != null)
+  );
+  
+  // Filter tipos to only those with places
+  return tipos.filter((t) => idsPresentes.has(t.id));
+}, [sitiosPorProvincia, tipos]);
+```
+
+### Category Counts
+
+Calculate the number of places in each category:
+
+```tsx
+const countsByTipoId = useMemo(() => {
+  const counts: Record<number, number> = {};
+  
+  for (const sitio of sitiosPorProvincia) {
+    const tipoId = sitio.tipo_sitio_id;
+    if (tipoId == null) continue;
+    counts[tipoId] = (counts[tipoId] ?? 0) + 1;
+  }
+  
+  return counts;
+}, [sitiosPorProvincia]);
+```
+
+### Applying Filter
+
+```tsx
+const sitiosFiltrados = useMemo(() => {
+  let filtrados = sitiosPorProvincia;
+  
+  if (selectedTipoId !== null) {
+    filtrados = filtrados.filter((s) => s.tipo_sitio_id === selectedTipoId);
+  }
+  
+  return filtrados;
+}, [sitiosPorProvincia, selectedTipoId]);
+```
+
+## Category Selection
+
+### State Management
+
+Category selection is managed with local state and URL params:
+
+```tsx
+const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+const params = useLocalSearchParams<{ categoriaId?: string }>();
+
+// Apply filter from URL params (from drawer)
+useEffect(() => {
+  if (params.categoriaId) {
+    const categoriaId = parseInt(params.categoriaId, 10);
+    if (!isNaN(categoriaId)) {
+      setSelectedTipoId(categoriaId);
+    }
+  }
+}, [params.categoriaId]);
+
+// Update URL when selection changes
+const handleSelectTipo = useCallback((tipoId: number | null) => {
+  setSelectedTipoId(tipoId);
+  
+  if (tipoId !== null) {
+    router.setParams({ categoriaId: String(tipoId) });
+  } else {
+    router.setParams({});
+  }
+}, []);
+```
+
+### Integration with Drawer
+
+The drawer menu can set the category filter by navigating with params:
+
+```tsx
+// In drawer menu
+<TouchableOpacity
+  onPress={() => {
+    router.push({
+      pathname: "/(drawer)/(tabs)/",
+      params: { categoriaId: String(tipo.id) }
+    });
+  }}
+>
+  <Text>{tipo.tipo}</Text>
+</TouchableOpacity>
+```
+
+## Header Integration
+
+The active category is displayed in the header when the category bar is hidden:
+
+```tsx
+const { setHeaderChip, setHeaderCategoryLabel } = useHeaderCategory();
+
+const selectedCategoryLabel = useMemo(() => {
+  if (selectedTipoId == null) return "Todas";
+  const tipo = tipos.find((t) => t.id === selectedTipoId);
+  return tipo?.tipo ?? "Todas";
+}, [selectedTipoId, tipos]);
+
+useEffect(() => {
+  setHeaderCategoryLabel(selectedCategoryLabel);
+}, [selectedCategoryLabel, setHeaderCategoryLabel]);
+```
+
+## Badge Display
+
+Category chips show badge counts:
+
+```tsx
+// "Todos" badge
+{showTotalBadge && (
+  <View style={styles.badge}>
+    <Text>{totalBadge}</Text>
+  </View>
+)}
+
+// Individual category badges (only when selected)
+{isSelected && count > 0 && (
+  <View style={styles.badge}>
+    <Text>{count}</Text>
+  </View>
+)}
+```
+
+## Styling
+
+Categories use dynamic theming:
+
+```tsx
+const colors = useColors();
+
+<TouchableOpacity
+  style={{
+    backgroundColor: isSelected ? colors.primary : colors.surface,
+    borderColor: isSelected ? colors.primary : colors.border,
+    borderWidth: 1,
+  }}
+>
+  <Text
+    style={{
+      color: isSelected ? "#FFFFFF" : colors.foreground,
+    }}
+  >
+    {tipo.tipo}
+  </Text>
+</TouchableOpacity>
+```
+
+## Adding New Categories
+
+To add a new category:
+
+<Steps>
+  <Step title="Insert into Database">
+    ```sql
+    INSERT INTO tipos_sitio (tipo, descripcion)
+    VALUES ('Pharmacy', 'Farmacias y servicios de salud');
+    ```
+  </Step>
+  
+  <Step title="Assign to Places">
+    ```sql
+    UPDATE sitios_relevantes
+    SET tipo_sitio_id = (SELECT id FROM tipos_sitio WHERE tipo = 'Pharmacy')
+    WHERE nombre LIKE '%Farmacia%';
+    ```
+  </Step>
+  
+  <Step title="No Code Changes Needed">
+    The app automatically fetches and displays new categories.
+  </Step>
+</Steps>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="useTiposSitio Hook" icon="hook" href="/development/hooks">
+    Complete hook implementation
+  </Card>
+  <Card title="Components" icon="cube" href="/development/components">
+    Category component details
+  </Card>
+  <Card title="Discover Places" icon="map" href="/features/discover-places">
+    How categories integrate with discovery
+  </Card>
+</CardGroup>

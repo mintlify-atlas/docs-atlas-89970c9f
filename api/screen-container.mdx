@@ -1,0 +1,186 @@
+---
+title: ScreenContainer
+description: Safe area wrapper component for screen layouts
+---
+
+The `ScreenContainer` component is a fundamental layout wrapper that handles safe area insets and background colors. It ensures content is properly positioned within device safe boundaries (avoiding notches, status bars, and home indicators) while extending the background color to fill the entire screen.
+
+## Props
+
+<ParamField path="edges" type="Edge[]" default='["top", "left", "right"]'>
+  Array specifying which edges should respect safe area insets. Common values:
+  - `["top", "left", "right"]` - Default, leaves bottom for tab bar
+  - `["top", "bottom", "left", "right"]` - All edges
+  - `["left", "right"]` - Only horizontal edges
+</ParamField>
+
+<ParamField path="className" type="string">
+  Tailwind/NativeWind className for the inner content area
+</ParamField>
+
+<ParamField path="containerClassName" type="string">
+  Tailwind/NativeWind className for the outer container (background layer)
+</ParamField>
+
+<ParamField path="safeAreaClassName" type="string">
+  Tailwind/NativeWind className for the SafeAreaView layer
+</ParamField>
+
+<ParamField path="children" type="ReactNode" required>
+  Content to render within the safe area
+</ParamField>
+
+<ParamField path="...ViewProps">
+  All other React Native `View` props are supported and passed to the outer container
+</ParamField>
+
+## Usage
+
+### Basic Usage
+
+```tsx
+import { ScreenContainer } from "@/components/screen-container";
+
+function MyScreen() {
+  return (
+    <ScreenContainer className="p-4">
+      <Text className="text-2xl font-bold text-foreground">
+        Welcome
+      </Text>
+    </ScreenContainer>
+  );
+}
+```
+
+### Custom Safe Area Edges
+
+```tsx
+import { ScreenContainer } from "@/components/screen-container";
+
+// Modal screen that should respect all edges
+function ModalScreen() {
+  return (
+    <ScreenContainer edges={["top", "bottom", "left", "right"]}>
+      <Text>Modal Content</Text>
+    </ScreenContainer>
+  );
+}
+```
+
+### With ScrollView
+
+```tsx
+import { ScreenContainer } from "@/components/screen-container";
+import { ScrollView } from "react-native";
+
+function ScrollableScreen() {
+  return (
+    <ScreenContainer>
+      <ScrollView className="flex-1 px-4">
+        <Text className="text-foreground">Scrollable content...</Text>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
+```
+
+## Implementation
+
+From `components/screen-container.tsx:41-68`:
+
+```tsx
+export function ScreenContainer({
+  children,
+  edges = ["top", "left", "right"],
+  className,
+  containerClassName,
+  safeAreaClassName,
+  style,
+  ...props
+}: ScreenContainerProps) {
+  return (
+    <View
+      className={cn(
+        "flex-1",
+        "bg-background",
+        containerClassName
+      )}
+      {...props}
+    >
+      <SafeAreaView
+        edges={edges}
+        className={cn("flex-1", safeAreaClassName)}
+        style={style}
+      >
+        <View className={cn("flex-1", className)}>{children}</View>
+      </SafeAreaView>
+    </View>
+  );
+}
+```
+
+## Architecture
+
+The component uses a three-layer structure:
+
+1. **Outer View** - Extends to full screen with background color
+2. **SafeAreaView** - Applies safe area insets based on `edges` prop
+3. **Inner View** - Contains the actual content with custom styling
+
+This architecture ensures the background color fills the entire screen (including status bar area) while keeping content within safe boundaries.
+
+## Common Patterns
+
+### Tab Screen
+
+```tsx
+// Default edges leave bottom for tab bar
+<ScreenContainer className="flex-1">
+  <View className="flex-1 px-4">
+    {/* Screen content */}
+  </View>
+</ScreenContainer>
+```
+
+### Full Screen Modal
+
+```tsx
+// Respect all edges including bottom
+<ScreenContainer edges={["top", "bottom", "left", "right"]}>
+  {/* Modal content */}
+</ScreenContainer>
+```
+
+### Custom Background
+
+```tsx
+// Override background color
+<ScreenContainer containerClassName="bg-surface">
+  {/* Content with surface background */}
+</ScreenContainer>
+```
+
+## Integration with Theme
+
+The component automatically uses the theme's background color via the `bg-background` className, which adapts to light/dark mode:
+
+```tsx
+// Automatically themed background
+<ScreenContainer>
+  <Text className="text-foreground">Auto-themed text</Text>
+</ScreenContainer>
+```
+
+## Notes
+
+- Uses `react-native-safe-area-context` for safe area handling
+- Default edges `["top", "left", "right"]` work well with bottom tab navigation
+- Background extends to full screen including notch/status bar areas
+- Content is automatically positioned within safe boundaries
+- Works seamlessly with NativeWind/Tailwind styling
+
+## Related
+
+- [Theming](/development/theming) - Theme configuration and dark mode
+- [Navigation](/development/navigation) - App navigation structure
+- [Components](/development/components) - Other UI components

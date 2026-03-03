@@ -1,0 +1,65 @@
+---
+title: Locations API
+description: Province and municipality data
+---
+
+## useLocations Hook
+
+```tsx
+import { useLocations } from "@/hooks/use-locations";
+
+const {
+  provincias,
+  municipios,
+  loadingProvincias,
+  loadingMunicipios,
+  error,
+  fetchProvincias,
+  fetchMunicipios,
+} = useLocations();
+```
+
+## Types
+
+```typescript
+type Provincia = {
+  id: string;
+  nombre: string;
+};
+
+type Municipio = {
+  id: string;
+  nombre: string;
+  provincia_id: string;
+};
+```
+
+## Methods
+
+### fetchProvincias
+
+```tsx
+await fetchProvincias();
+```
+
+Loads all provinces from Supabase.
+
+### fetchMunicipios
+
+```tsx
+await fetchMunicipios(provinciaId);
+```
+
+Loads municipalities for a province.
+
+## Example
+
+```tsx
+const { provincias, fetchMunicipios } = useLocations();
+const [selected, setSelected] = useState<string | null>(null);
+
+const handleSelect = (provincia: Provincia) => {
+  setSelected(provincia.id);
+  fetchMunicipios(provincia.id);
+};
+```

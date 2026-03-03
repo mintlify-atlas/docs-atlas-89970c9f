@@ -1,0 +1,75 @@
+---
+title: useAuth Hook
+description: Authentication hook reference
+---
+
+## Import
+
+```tsx
+import { useAuth } from "@/hooks/use-auth";
+```
+
+## Usage
+
+```tsx
+const { user, loading, isAuthenticated, logout, refresh } = useAuth();
+```
+
+## Return Values
+
+### user
+
+```typescript
+User | null
+```
+
+Current authenticated user or null.
+
+### loading
+
+```typescript
+boolean
+```
+
+True while checking authentication.
+
+### isAuthenticated
+
+```typescript
+boolean
+```
+
+True if user is authenticated.
+
+### logout
+
+```typescript
+() => Promise<void>
+```
+
+Logs out the current user.
+
+### refresh
+
+```typescript
+() => Promise<void>
+```
+
+Refreshes user data.
+
+## Example
+
+```tsx
+function ProfileScreen() {
+  const { user, logout } = useAuth();
+
+  if (!user) return <GuestView />;
+
+  return (
+    <View>
+      <Text>{user.name}</Text>
+      <Button onPress={logout}>Logout</Button>
+    </View>
+  );
+}
+```

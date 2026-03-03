@@ -1,0 +1,451 @@
+---
+title: User Profiles
+description: Profile management for authenticated and guest users
+---
+
+## Overview
+
+Por el Barrio supports both authenticated and guest users with personalized profiles. User profiles store preferences like name, email, and location to provide a customized experience.
+
+## Database Schema
+
+```sql
+CREATE TABLE user_profiles (
+  user_id VARCHAR(255) PRIMARY KEY,
+  name VARCHAR(255),
+  email VARCHAR(255),
+  province VARCHAR(100),
+  municipality VARCHAR(100),
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Fields:**
+- `user_id`: Unique identifier (OAuth openId or guest ID)
+- `name`: User's display name (used for reviews)
+- `email`: Contact email
+- `province`: Selected province for location filtering
+- `municipality`: Selected municipality
+
+## useProfile Hook
+
+The `useProfile` hook manages profile data:
+
+```tsx
+import { useProfile } from "@/hooks/use-profile";
+
+const {
+  profile,
+  loading,
+  saving,
+  error,
+  saveProfile,
+  refresh,
+} = useProfile();
+```
+
+### TypeScript Type
+
+```tsx
+export type ProfileData = {
+  name: string;
+  email: string;
+  province: string;
+  municipality: string;
+};
+```
+
+### Implementation
+
+```tsx
+export function useProfile() {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<ProfileData>({
+    name: "",
+    email: "",
+    province: "",
+    municipality: "",
+  });
+
+  const userId = user?.openId ?? user?.id?.toString() ?? null;
+
+  const fetchProfile = useCallback(async () => {
+    let id: string;
+    if (userId) {
+      id = userId;
+    } else {
+      id = await getOrCreateGuestId();
+    }
+
+    const { data, error: err } = await supabase
+      .from("user_profiles")
+      .select("name, email, province, municipality")
+      .eq("user_id", id)
+      .maybeSingle();
+
+    if (err) throw err;
+    
+    if (data) {
+      setProfile(data);
+    } else if (user) {
+      // Use auth user data as default
+      setProfile({
+        name: user.name ?? "",
+        email: user.email ?? "",
+        province: "",
+        municipality: "",
+      });
+    }
+  }, [userId, user]);
+
+  const saveProfile = useCallback(
+    async (data: ProfileData) => {
+      let id: string;
+      if (userId) {
+        id = userId;
+      } else {
+        id = await getOrCreateGuestId();
+      }
+
+      const { error: err } = await supabase.from("user_profiles").upsert(
+        {
+          user_id: id,
+          name: data.name || null,
+          email: data.email || null,
+          province: data.province || null,
+          municipality: data.municipality || null,
+        },
+        { onConflict: "user_id" }
+      );
+      
+      if (err) throw err;
+      setProfile(data);
+    },
+    [userId]
+  );
+
+  return { profile, loading, saving, error, saveProfile, refresh: fetchProfile };
+}
+```
+
+## Guest User Support
+
+### Guest ID Generation
+
+Guest users get a unique ID stored in AsyncStorage:
+
+```tsx
+const GUEST_PROFILE_ID_KEY = "guest_profile_id";
+
+async function getOrCreateGuestId(): Promise<string> {
+  let id = await AsyncStorage.getItem(GUEST_PROFILE_ID_KEY);
+  
+  if (!id) {
+    id = `guest_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+    await AsyncStorage.setItem(GUEST_PROFILE_ID_KEY, id);
+  }
+  
+  return id;
+}
+```
+
+### Guest vs Authenticated
+
+| Feature | Guest User | Authenticated User |
+|---------|------------|--------------------|
+| Profile storage | Local + Supabase | Supabase |
+| User ID | `guest_<timestamp>_<random>` | OAuth `openId` |
+| Cross-device sync | No | Yes |
+| Write reviews | Yes (if name set) | Yes |
+| Data persistence | Device only | Cloud |
+
+## Profile Screen
+
+The profile screen (`app/(drawer)/(tabs)/profile.tsx`) provides the UI for managing profiles:
+
+### Layout
+
+```tsx
+export default function ProfileScreen() {
+  const { user, logout } = useAuth();
+  const { profile, loading, saving, error, saveProfile } = useProfile();
+  const { provincias, municipios, fetchMunicipios } = useLocations();
+  
+  const [form, setForm] = useState<ProfileData>(profile);
+  const [touched, setTouched] = useState(false);
+
+  // Avatar circle with initial
+  <View style={{ backgroundColor: colors.primary }}>
+    <Text>
+      {(form.name || user?.name || "U").charAt(0).toUpperCase()}
+    </Text>
+  </View>
+  
+  // Form fields
+  // ...
+  
+  // Save button (only shown when touched)
+  {touched && (
+    <TouchableOpacity onPress={handleSave}>
+      <Text>Guardar cambios</Text>
+    </TouchableOpacity>
+  )}
+  
+  // Logout button (only for authenticated users)
+  {user && (
+    <TouchableOpacity onPress={handleLogout}>
+      <Text>Cerrar sesión</Text>
+    </TouchableOpacity>
+  )}
+}
+```
+
+### Form Fields
+
+<Tabs>
+  <Tab title="Name">
+    ```tsx
+    <TextInput
+      value={form.name}
+      onChangeText={(v) => updateForm("name", v)}
+      placeholder="Tu nombre"
+      autoCapitalize="words"
+    />
+    ```
+    
+    Used as the author name for reviews.
+  </Tab>
+  
+  <Tab title="Email">
+    ```tsx
+    <TextInput
+      value={form.email}
+      onChangeText={(v) => updateForm("email", v)}
+      placeholder="correo@ejemplo.com"
+      keyboardType="email-address"
+      autoCapitalize="none"
+    />
+    ```
+    
+    Optional contact information.
+  </Tab>
+  
+  <Tab title="Province">
+    ```tsx
+    <TouchableOpacity
+      onPress={() => setProvinceModalVisible(true)}
+    >
+      <Text>{form.province || "Seleccionar provincia"}</Text>
+      <IconSymbol name="chevron.down" />
+    </TouchableOpacity>
+    ```
+    
+    Opens a modal with all available provinces.
+  </Tab>
+  
+  <Tab title="Municipality">
+    ```tsx
+    <TouchableOpacity
+      onPress={() => setMunicipalityModalVisible(true)}
+      disabled={!selectedProvinceId}
+    >
+      <Text>
+        {form.municipality || 
+         (selectedProvinceId 
+           ? "Seleccionar municipio" 
+           : "Primero elige una provincia")}
+      </Text>
+    </TouchableOpacity>
+    ```
+    
+    Disabled until province is selected. Loads municipalities for selected province.
+  </Tab>
+</Tabs>
+
+## Location Selection
+
+### Province Modal
+
+```tsx
+<Modal visible={provinceModalVisible} transparent animationType="slide">
+  <View style={styles.modalContainer}>
+    <Text>Elegir provincia</Text>
+    <ScrollView>
+      {provincias.map((p) => (
+        <TouchableOpacity
+          key={p.id}
+          onPress={() => handleSelectProvince(p)}
+        >
+          <Text>{p.nombre}</Text>
+          {form.province === p.nombre && (
+            <IconSymbol name="checkmark.circle.fill" />
+          )}
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  </View>
+</Modal>
+```
+
+### Municipality Loading
+
+Municipalities are loaded when province is selected:
+
+```tsx
+const selectedProvinceId =
+  provincias.find((p) => p.nombre === form.province)?.id ?? null;
+
+useEffect(() => {
+  if (selectedProvinceId) {
+    fetchMunicipios(selectedProvinceId);
+  } else {
+    fetchMunicipios(null);
+  }
+}, [selectedProvinceId, fetchMunicipios]);
+```
+
+### Selection Handlers
+
+```tsx
+const handleSelectProvince = useCallback(
+  (p: Provincia) => {
+    updateForm("province", p.nombre);
+    updateForm("municipality", ""); // Clear municipality
+    setProvinceModalVisible(false);
+  },
+  [updateForm]
+);
+
+const handleSelectMunicipality = useCallback(
+  (m: Municipio) => {
+    updateForm("municipality", m.nombre);
+    setMunicipalityModalVisible(false);
+  },
+  [updateForm]
+);
+```
+
+## Save Behavior
+
+### Dirty State Tracking
+
+```tsx
+const [touched, setTouched] = useState(false);
+
+const updateForm = useCallback((field: keyof ProfileData, value: string) => {
+  setForm((prev) => ({ ...prev, [field]: value }));
+  setTouched(true);
+}, []);
+```
+
+The save button only appears when the form is modified.
+
+### Save Handler
+
+```tsx
+const handleSave = useCallback(async () => {
+  try {
+    await saveProfile(form);
+    setTouched(false);
+    Alert.alert("Guardado", "Tu perfil se ha actualizado correctamente.");
+  } catch {
+    Alert.alert("Error", error ?? "No se pudo guardar el perfil.");
+  }
+}, [form, saveProfile, error]);
+```
+
+## Impact on App Behavior
+
+### Home Screen Filtering
+
+The home screen filters places by the user's selected province:
+
+```tsx
+const { profile } = useProfile();
+const { provincias } = useLocations();
+
+const provinciaUsuarioId = useMemo(() => {
+  if (!profile.province || provincias.length === 0) return null;
+  const provincia = provincias.find((p) => p.nombre === profile.province);
+  return provincia?.id ?? null;
+}, [profile.province, provincias]);
+
+const sitiosPorProvincia = useMemo(() => {
+  if (!provinciaUsuarioId) return sitios;
+  return sitios.filter((s) => s.provincia_id === provinciaUsuarioId);
+}, [sitios, provinciaUsuarioId]);
+```
+
+### Review Attribution
+
+Reviews use the profile name as the author:
+
+```tsx
+const autorDesdePerfil = 
+  (profile.name && profile.name.trim()) || 
+  (profile.email && profile.email.trim()) || 
+  null;
+
+if (!autorDesdePerfil) {
+  Alert.alert(
+    "Perfil incompleto",
+    "Por favor configura tu nombre en el perfil para poder opinar."
+  );
+  return;
+}
+
+await crearOpinion(
+  sitioId,
+  calificacion,
+  comentario,
+  autorDesdePerfil
+);
+```
+
+## Authentication Integration
+
+The profile integrates with the authentication system:
+
+```tsx
+const { user, logout } = useAuth();
+
+const handleLogout = useCallback(() => {
+  Alert.alert("Cerrar sesión", "¿Estás seguro?", [
+    { text: "Cancelar", style: "cancel" },
+    { text: "Cerrar sesión", style: "destructive", onPress: logout },
+  ]);
+}, [logout]);
+```
+
+<Info>
+  Authenticated users see a logout button. Guest users do not.
+</Info>
+
+## Data Persistence
+
+### Local Storage (Guest)
+
+- Guest ID in AsyncStorage
+- Profile data in Supabase (linked to guest ID)
+- Data persists until app uninstall
+
+### Cloud Storage (Authenticated)
+
+- User ID from OAuth
+- Profile data in Supabase
+- Data syncs across devices
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="useProfile Hook" icon="hook" href="/api/use-profile">
+    Complete hook documentation
+  </Card>
+  <Card title="useAuth Hook" icon="lock" href="/api/use-auth">
+    Authentication integration
+  </Card>
+  <Card title="useLocations Hook" icon="map-pin" href="/development/hooks">
+    Location data fetching
+  </Card>
+</CardGroup>

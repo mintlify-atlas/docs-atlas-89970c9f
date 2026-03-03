@@ -1,0 +1,41 @@
+---
+title: API Routes
+description: tRPC router definitions
+---
+
+## tRPC Routers
+
+### App Router
+
+`server/routers.ts`:
+
+```typescript
+export const appRouter = router({
+  auth: router({
+    me: publicProcedure.query((opts) => opts.ctx.user),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      ctx.res.clearCookie(COOKIE_NAME);
+      return { success: true };
+    }),
+  }),
+});
+```
+
+### Using tRPC
+
+```tsx
+import { trpc } from "@/lib/trpc";
+
+const { data: user } = trpc.auth.me.useQuery();
+const logout = trpc.auth.logout.useMutation();
+```
+
+## Direct Supabase
+
+Most operations use direct Supabase queries:
+
+```typescript
+const { data } = await supabase
+  .from("sitios_relevantes")
+  .select("*");
+```

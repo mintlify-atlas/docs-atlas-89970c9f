@@ -1,0 +1,398 @@
+---
+title: Development Environment
+description: Set up your development environment for Por el Barrio
+---
+
+## Prerequisites
+
+Before starting development, ensure you have the required tools installed.
+
+### Required Software
+
+<AccordionGroup>
+  <Accordion title="Node.js & pnpm">
+    **Node.js** version 18 or higher:
+    ```bash
+    node --version  # Should be v18.x or higher
+    ```
+    
+    **pnpm** version 9.12.0:
+    ```bash
+    npm install -g pnpm@9.12.0
+    pnpm --version
+    ```
+  </Accordion>
+  
+  <Accordion title="Code Editor">
+    Recommended: **Visual Studio Code** with extensions:
+    
+    - ESLint
+    - Prettier
+    - React Native Tools
+    - Expo Tools
+    - Tailwind CSS IntelliSense
+    
+    Extensions are defined in `.vscode/extensions.json`:
+    ```json
+    {
+      "recommendations": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "expo.vscode-expo-tools"
+      ]
+    }
+    ```
+  </Accordion>
+  
+  <Accordion title="Mobile Development Tools">
+    For **iOS** (macOS only):
+    - Xcode 14+ from App Store
+    - Xcode Command Line Tools
+    - CocoaPods: `sudo gem install cocoapods`
+    
+    For **Android**:
+    - Android Studio
+    - Android SDK (API level 33+)
+    - Android Emulator or physical device
+    
+    For **Quick Testing**:
+    - Expo Go app on your phone ([iOS](https://apps.apple.com/app/expo-go/id982107779) / [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+  </Accordion>
+  
+  <Accordion title="Database & Backend">
+    - **Supabase Account**: [Sign up](https://supabase.com)
+    - **Git**: For version control
+  </Accordion>
+</AccordionGroup>
+
+## Project Setup
+
+<Steps>
+  <Step title="Clone Repository">
+    ```bash
+    git clone <repository-url>
+    cd por-el-barrio
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    pnpm install
+    ```
+    
+    This installs all packages defined in `package.json`:
+    - React Native & Expo
+    - tRPC & TanStack Query
+    - Supabase client
+    - NativeWind
+    - Development tools
+  </Step>
+  
+  <Step title="Configure Environment">
+    Create `.env` file:
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit `.env` with your Supabase credentials:
+    ```env
+    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+    EXPO_PUBLIC_SUPABASE_KEY=your-anon-key-here
+    ```
+  </Step>
+  
+  <Step title="Set Up Database">
+    1. Create a Supabase project
+    2. Run the migration scripts in SQL Editor
+    3. Insert seed data for provinces, municipalities, and categories
+    
+    See [Database Schema](/development/database-schema) for details.
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Starting Development Servers
+
+```bash
+# Start both API server and Expo
+pnpm dev
+```
+
+This runs two processes:
+
+1. **API Server** (port 3000):
+   ```bash
+   pnpm dev:server
+   ```
+   
+2. **Expo Metro Bundler** (port 8081):
+   ```bash
+   pnpm dev:metro
+   ```
+
+### Running on Devices
+
+<Tabs>
+  <Tab title="Expo Go (Quick)">
+    1. Start development server: `pnpm dev`
+    2. Scan QR code with:
+       - **iOS**: Camera app
+       - **Android**: Expo Go app
+    3. App loads on your device
+    
+    <Info>
+      Fastest way to test. Limited to Expo SDK APIs.
+    </Info>
+  </Tab>
+  
+  <Tab title="iOS Simulator">
+    ```bash
+    # Install pods (first time only)
+    cd ios && pod install && cd ..
+    
+    # Run on simulator
+    pnpm ios
+    ```
+    
+    Requires macOS with Xcode.
+  </Tab>
+  
+  <Tab title="Android Emulator">
+    ```bash
+    # Ensure emulator is running
+    
+    # Run on emulator
+    pnpm android
+    ```
+    
+    Requires Android Studio and emulator setup.
+  </Tab>
+  
+  <Tab title="Web Browser">
+    ```bash
+    pnpm dev:metro
+    # Press 'w' to open in browser
+    ```
+    
+    Experimental web support.
+  </Tab>
+</Tabs>
+
+## VSCode Configuration
+
+### Settings
+
+`.vscode/settings.json`:
+
+```json
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "files.associations": {
+    "*.css": "tailwindcss"
+  }
+}
+```
+
+### Debugging
+
+Create `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Expo",
+      "type": "reactnative",
+      "request": "attach",
+      "port": 8081
+    }
+  ]
+}
+```
+
+## Scripts Reference
+
+### Development
+
+```bash
+pnpm dev          # Start both server and metro
+pnpm dev:server   # Start API server only
+pnpm dev:metro    # Start Expo metro only
+```
+
+### Building
+
+```bash
+pnpm build        # Build API server for production
+pnpm check        # TypeScript type checking
+pnpm lint         # Run ESLint
+pnpm format       # Format code with Prettier
+```
+
+### Testing
+
+```bash
+pnpm test         # Run tests with Vitest
+```
+
+### Database
+
+```bash
+pnpm db:push      # Run Drizzle migrations
+```
+
+### Mobile
+
+```bash
+pnpm ios          # Run on iOS simulator
+pnpm android      # Run on Android emulator
+pnpm qr           # Generate QR code for Expo Go
+```
+
+## Environment Variables
+
+### Frontend (.env)
+
+```env
+# Supabase
+EXPO_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=your-anon-key
+
+# API (optional, for production)
+EXPO_PUBLIC_API_URL=http://localhost:3000
+```
+
+### Backend (server .env)
+
+```env
+NODE_ENV=development
+PORT=3000
+
+# Supabase (for server-side operations)
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_SERVICE_KEY=your-service-key
+
+# OAuth (if using)
+OAUTH_CLIENT_ID=xxx
+OAUTH_CLIENT_SECRET=xxx
+```
+
+<Warning>
+  Never commit `.env` files. Add them to `.gitignore`.
+</Warning>
+
+## Common Issues
+
+### Metro Bundler Cache
+
+If you encounter strange errors:
+
+```bash
+# Clear Metro cache
+pnpm start --clear
+
+# Or delete cache manually
+rm -rf .expo node_modules/.cache
+```
+
+### iOS Pod Issues
+
+```bash
+cd ios
+rm -rf Pods Podfile.lock
+pod install
+cd ..
+```
+
+### Android Build Errors
+
+```bash
+cd android
+./gradlew clean
+cd ..
+```
+
+### TypeScript Errors
+
+```bash
+# Restart TypeScript server in VSCode
+Cmd/Ctrl + Shift + P -> "TypeScript: Restart TS Server"
+
+# Run type check
+pnpm check
+```
+
+## Git Workflow
+
+### Branch Strategy
+
+- `main` - Production-ready code
+- `dev` - Development branch
+- `feature/*` - Feature branches
+- `fix/*` - Bug fixes
+
+### Commit Convention
+
+```bash
+# Format: type(scope): message
+
+git commit -m "feat(home): add category filtering"
+git commit -m "fix(reviews): star rating display"
+git commit -m "docs: update setup guide"
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
+## Hot Reload
+
+### Fast Refresh
+
+React Fast Refresh is enabled by default:
+
+- Edit any `.tsx` file
+- Changes appear instantly
+- Component state is preserved
+
+### When to Full Reload
+
+Full reload required for:
+- `.env` changes (restart server)
+- Native module changes
+- `app.json` changes
+
+## Performance Tips
+
+<Tip>
+  **Fast Iteration**
+  
+  1. Use Expo Go for quick UI testing
+  2. Use web browser for layout work
+  3. Test on real device before release
+</Tip>
+
+<Tip>
+  **Debugging**
+  
+  - Use React DevTools: `npx react-devtools`
+  - Enable remote debugging in Expo
+  - Use console.log extensively
+  - Check Metro bundler terminal for errors
+</Tip>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/development/configuration">
+    Detailed configuration options
+  </Card>
+  <Card title="Running Locally" icon="play" href="/development/running-locally">
+    Advanced local development
+  </Card>
+</CardGroup>

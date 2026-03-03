@@ -1,0 +1,482 @@
+---
+title: Ratings & Reviews
+description: 5-star rating system with detailed customer reviews
+---
+
+## Overview
+
+Por el Barrio features a comprehensive rating and review system that allows users to share their experiences with local businesses. The system includes:
+
+- 5-star rating scale
+- Written reviews with comments
+- Average rating calculation
+- Review statistics and distribution
+- Author attribution
+
+## Database Schema
+
+Reviews are stored in the `opiniones` table:
+
+```sql
+CREATE TABLE opiniones (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  sitio_id INT NOT NULL,
+  calificacion INT NOT NULL CHECK (calificacion >= 1 AND calificacion <= 5),
+  comentario TEXT,
+  autor_texto VARCHAR(255),
+  creado_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+**Fields:**
+- `id`: Unique review identifier
+- `sitio_id`: Reference to the place being reviewed
+- `calificacion`: Star rating (1-5)
+- `comentario`: Optional text review
+- `autor_texto`: Author name (from profile)
+- `creado_at`: Timestamp of creation
+
+## useOpiniones Hook
+
+The `useOpiniones` hook manages fetching and creating reviews:
+
+```tsx
+import { useOpiniones } from "@/hooks/use-opiniones";
+
+const {
+  opiniones,
+  stats,
+  loading,
+  error,
+  refresh,
+  crearOpinion,
+} = useOpiniones(sitioId);
+```
+
+### TypeScript Types
+
+```tsx
+export type Opinion = {
+  id: string;
+  sitio_id: number;
+  calificacion: number;
+  comentario: string | null;
+  autor_texto: string | null;
+  creado_at: string;
+};
+
+export type OpinionStats = {
+  promedio: number; // Average rating (rounded to 1 decimal)
+  total: number; // Total number of reviews
+  distribucion: { [key: number]: number }; // Count per rating (1-5)
+};
+```
+
+### Fetching Reviews
+
+```tsx
+const fetchOpiniones = useCallback(async () => {
+  if (!sitioId) return;
+
+  const { data, error: err } = await supabase
+    .from("opiniones")
+    .select("id, sitio_id, calificacion, comentario, autor_texto, creado_at")
+    .eq("sitio_id", sitioId)
+    .order("creado_at", { ascending: false });
+
+  if (err) throw err;
+
+  const opinionesData = data as Opinion[];
+  setOpiniones(opinionesData);
+
+  // Calculate statistics
+  if (opinionesData.length > 0) {
+    const suma = opinionesData.reduce((acc, o) => acc + o.calificacion, 0);
+    const promedio = suma / opinionesData.length;
+    
+    const distribucion = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    opinionesData.forEach((o) => {
+      distribucion[o.calificacion] = (distribucion[o.calificacion] || 0) + 1;
+    });
+
+    setStats({
+      promedio: Math.round(promedio * 10) / 10,
+      total: opinionesData.length,
+      distribucion,
+    });
+  }
+}, [sitioId]);
+```
+
+### Creating Reviews
+
+```tsx
+const crearOpinion = useCallback(
+  async (
+    sitioId: number,
+    calificacion: number,
+    comentario: string | null,
+    autorTexto: string | null
+  ): Promise<void> => {
+    const { error: err } = await supabase.from("opiniones").insert({
+      sitio_id: sitioId,
+      calificacion,
+      comentario: comentario || null,
+      autor_texto: autorTexto || null,
+    });
+
+    if (err) throw err;
+
+    // Refresh opinions after creating
+    await fetchOpiniones();
+  },
+  [fetchOpiniones]
+);
+```
+
+## FormularioOpinion Component
+
+The review form component allows users to write and submit reviews:
+
+```tsx
+import { FormularioOpinion } from "@/components/formulario-opinion";
+
+<FormularioOpinion
+  sitioId={sitioId}
+  onCreateOpinion={crearOpinion}
+  onSuccess={() => {
+    refreshOpiniones();
+  }}
+/>
+```
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `sitioId` | `number` | ID of the place being reviewed |
+| `onCreateOpinion` | `function` | Callback to create the review |
+| `onSuccess` | `function` | Optional callback after successful submission |
+
+### Component Implementation
+
+```tsx
+export function FormularioOpinion({
+  sitioId,
+  onCreateOpinion,
+  onSuccess,
+}: FormularioOpinionProps) {
+  const { profile } = useProfile();
+  const [calificacion, setCalificacion] = useState<number>(0);
+  const [comentario, setComentario] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const autorDesdePerfil = 
+    (profile.name && profile.name.trim()) || 
+    (profile.email && profile.email.trim()) || 
+    null;
+
+  const handleSubmit = async () => {
+    if (calificacion === 0) {
+      Alert.alert("Error", "Por favor selecciona una calificación");
+      return;
+    }
+
+    if (!autorDesdePerfil) {
+      Alert.alert(
+        "Perfil incompleto",
+        "Por favor configura tu nombre en el perfil para poder opinar."
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await onCreateOpinion(
+        sitioId,
+        calificacion,
+        comentario.trim() || null,
+        autorDesdePerfil
+      );
+      
+      setCalificacion(0);
+      setComentario("");
+      Alert.alert("Éxito", "Tu opinión ha sido publicada");
+      onSuccess?.();
+    } catch (error) {
+      Alert.alert("Error", "No se pudo publicar tu opinión");
+    } finally {
+      setLoading(false);
+    }
+  };
+```
+
+### Form Fields
+
+1. **Author Display** (read-only)
+   ```tsx
+   <Text>Opinando como</Text>
+   <Text>{autorDesdePerfil}</Text>
+   ```
+
+2. **Star Rating** (required)
+   ```tsx
+   <EstrellasPuntuacion
+     promedio={calificacion}
+     editable
+     calificacionSeleccionada={calificacion}
+     onCalificacionChange={setCalificacion}
+     size={32}
+   />
+   ```
+
+3. **Comment** (optional, max 500 chars)
+   ```tsx
+   <TextInput
+     value={comentario}
+     onChangeText={setComentario}
+     placeholder="Escribe tu opinión sobre este sitio..."
+     multiline
+     maxLength={500}
+   />
+   <Text>{comentario.length}/500</Text>
+   ```
+
+## EstrellasPuntuacion Component
+
+The star rating component works in two modes:
+
+### Display Mode (Read-only)
+
+```tsx
+<EstrellasPuntuacion
+  promedio={stats.promedio}
+  total={stats.total}
+  size={20}
+  showNumber
+  showTotal
+/>
+```
+
+Displays:
+- ⭐⭐⭐⭐☆ 4.2 (15)
+
+### Editable Mode
+
+```tsx
+<EstrellasPuntuacion
+  promedio={calificacion}
+  editable
+  calificacionSeleccionada={calificacion}
+  onCalificacionChange={setCalificacion}
+  size={32}
+/>
+```
+
+**Props:**
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `promedio` | `number` | - | Average rating to display |
+| `total` | `number` | - | Total number of reviews |
+| `size` | `number` | 16 | Star icon size in pixels |
+| `showNumber` | `boolean` | false | Show numeric rating |
+| `showTotal` | `boolean` | false | Show total count |
+| `editable` | `boolean` | false | Enable interactive mode |
+| `calificacionSeleccionada` | `number` | - | Current selection (editable mode) |
+| `onCalificacionChange` | `function` | - | Callback when rating changes |
+
+### Implementation
+
+```tsx
+const renderEstrella = (index: number) => {
+  const valorEstrella = index + 1;
+  let estaSeleccionada = false;
+  let estaParcial = false;
+
+  if (editable) {
+    estaSeleccionada = 
+      calificacionSeleccionada !== undefined && 
+      calificacionSeleccionada > 0 && 
+      valorEstrella <= calificacionSeleccionada;
+  } else {
+    estaSeleccionada = promedio > 0 && valorEstrella <= Math.round(promedio);
+    estaParcial = 
+      !estaSeleccionada && 
+      promedio > 0 && 
+      valorEstrella - 1 < promedio && 
+      promedio < valorEstrella;
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={() => handlePress(valorEstrella)}
+      disabled={!editable}
+    >
+      <IconSymbol
+        name={
+          estaSeleccionada 
+            ? "star.fill" 
+            : estaParcial 
+            ? "star.lefthalf.fill" 
+            : "star"
+        }
+        size={size}
+        color={estaSeleccionada || estaParcial ? "#FFD700" : colors.muted}
+      />
+    </TouchableOpacity>
+  );
+};
+```
+
+## Displaying Reviews
+
+On the details screen, reviews are shown in a scrollable list:
+
+```tsx
+{opiniones.length > 0 && (
+  <View>
+    <Text>Opiniones de Clientes ({opiniones.length})</Text>
+    <ScrollView style={{ maxHeight: 400 }} nestedScrollEnabled>
+      {opiniones.map((opinion) => (
+        <View key={opinion.id} style={styles.reviewCard}>
+          <View style={styles.reviewHeader}>
+            <EstrellasPuntuacion
+              promedio={opinion.calificacion}
+              size={16}
+            />
+            {opinion.autor_texto && (
+              <Text>{opinion.autor_texto}</Text>
+            )}
+          </View>
+          {opinion.comentario && (
+            <Text>{opinion.comentario}</Text>
+          )}
+          <Text>
+            {new Date(opinion.creado_at).toLocaleDateString('es-ES', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
+        </View>
+      ))}
+    </ScrollView>
+  </View>
+)}
+```
+
+## Rating Statistics
+
+### Average Rating Display
+
+On place cards and detail pages:
+
+```tsx
+{stats.total > 0 && (
+  <EstrellasPuntuacion
+    promedio={stats.promedio}
+    total={stats.total}
+    size={20}
+    showNumber
+    showTotal
+  />
+)}
+```
+
+Shows: ⭐⭐⭐⭐☆ 4.2 (23 reviews)
+
+### Distribution
+
+The `stats.distribucion` object contains counts per rating:
+
+```tsx
+{
+  1: 2,  // 2 one-star reviews
+  2: 1,  // 1 two-star review
+  3: 5,  // 5 three-star reviews
+  4: 8,  // 8 four-star reviews
+  5: 7   // 7 five-star reviews
+}
+```
+
+This can be used to render a distribution chart in the future.
+
+## Validation Rules
+
+<Warning>
+  **Review Requirements**
+  
+  - User must have a name in their profile
+  - Star rating is required (1-5)
+  - Comment is optional but limited to 500 characters
+  - One review per user per place (not currently enforced)
+</Warning>
+
+## Refresh Behavior
+
+Reviews are automatically refreshed in several scenarios:
+
+1. **After creating a review**: Form submission triggers refresh
+2. **Returning to details screen**: `useFocusEffect` refreshes data
+3. **Returning to home screen**: Refreshes to update card ratings
+
+```tsx
+useFocusEffect(
+  useCallback(() => {
+    refreshProfile();
+    refresh(); // Refresh places to update ratings
+  }, [refreshProfile, refresh])
+);
+```
+
+## Edge Cases
+
+### No Profile Name
+
+If user hasn't set a name:
+
+```tsx
+if (!autorDesdePerfil) {
+  return (
+    <View style={styles.warningBox}>
+      <Text>
+        ⚠️ Para publicar una opinión, configura tu nombre en el perfil.
+      </Text>
+    </View>
+  );
+}
+```
+
+### No Reviews Yet
+
+When a place has no reviews:
+
+```tsx
+if (opiniones.length === 0) {
+  return null; // Don't show reviews section
+}
+
+if (stats.total === 0) {
+  // Don't show rating on cards
+  return null;
+}
+```
+
+### Guest Users
+
+Guest users can write reviews using their guest profile name.
+
+## Related Components
+
+<CardGroup cols={2}>
+  <Card title="FormularioOpinion" icon="pen" href="/api/formulario-opinion">
+    Complete component API reference
+  </Card>
+  <Card title="EstrellasPuntuacion" icon="star" href="/api/estrellas-puntuacion">
+    Star rating component details
+  </Card>
+  <Card title="useOpiniones Hook" icon="hook" href="/api/use-opiniones">
+    Data fetching hook documentation
+  </Card>
+</CardGroup>

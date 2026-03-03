@@ -1,0 +1,197 @@
+---
+title: Installation
+description: Prerequisites and installation steps for Por el Barrio
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+<AccordionGroup>
+  <Accordion title="Node.js & pnpm">
+    - **Node.js**: Version 18 or higher
+    - **pnpm**: Version 9.12.0 or higher (package manager)
+    
+    ```bash
+    # Check versions
+    node --version
+    pnpm --version
+    
+    # Install pnpm if needed
+    npm install -g pnpm@9.12.0
+    ```
+  </Accordion>
+  
+  <Accordion title="Expo CLI">
+    Expo CLI is included in the project dependencies, but you can install it globally:
+    
+    ```bash
+    pnpm install -g expo-cli
+    ```
+  </Accordion>
+  
+  <Accordion title="Mobile Development Environment">
+    Choose one or more:
+    
+    - **iOS**: macOS with Xcode 14+ (for iOS development)
+    - **Android**: Android Studio with Android SDK
+    - **Expo Go**: Install Expo Go app on your mobile device for quick testing
+  </Accordion>
+  
+  <Accordion title="Supabase Account">
+    - Create a free account at [supabase.com](https://supabase.com)
+    - Create a new project
+    - Note your project URL and anon key
+  </Accordion>
+</AccordionGroup>
+
+## Installation Steps
+
+<Steps>
+  <Step title="Clone the Repository">
+    ```bash
+    git clone <repository-url>
+    cd por-el-barrio
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    ```bash
+    pnpm install
+    ```
+    
+    This will install all packages from `package.json`, including:
+    - React Native and Expo dependencies
+    - tRPC and TanStack Query
+    - Supabase client
+    - NativeWind for styling
+  </Step>
+  
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the project root:
+    
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Add your Supabase credentials:
+    
+    ```env
+    EXPO_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+    EXPO_PUBLIC_SUPABASE_KEY=your-anon-key
+    ```
+  </Step>
+  
+  <Step title="Set Up Database">
+    Run the database migrations in your Supabase project:
+    
+    1. Open your Supabase project dashboard
+    2. Go to SQL Editor
+    3. Run the migration scripts from `/drizzle` folder
+    
+    Required tables:
+    - `provincia` (provinces)
+    - `municipio` (municipalities)
+    - `tipos_sitio` (place categories)
+    - `sitios_relevantes` (places/businesses)
+    - `user_profiles` (user data)
+    - `opiniones` (reviews)
+  </Step>
+  
+  <Step title="Start Development Server">
+    ```bash
+    pnpm dev
+    ```
+    
+    This runs:
+    - Backend API server on port 3000 (or configured port)
+    - Expo Metro bundler on port 8081
+    
+    You can also run them separately:
+    ```bash
+    # Terminal 1: Backend server
+    pnpm dev:server
+    
+    # Terminal 2: Expo Metro
+    pnpm dev:metro
+    ```
+  </Step>
+</Steps>
+
+## Verify Installation
+
+<Check>
+  **API Server Running**
+  
+  Visit `http://localhost:3000/api/trpc` - you should see a tRPC response
+</Check>
+
+<Check>
+  **Expo Development Server**
+  
+  You should see a QR code in the terminal. Scan it with:
+  - **iOS**: Camera app
+  - **Android**: Expo Go app
+</Check>
+
+<Check>
+  **Supabase Connection**
+  
+  Open the app - if provinces load in the profile section, Supabase is connected
+</Check>
+
+## Platform-Specific Setup
+
+<Tabs>
+  <Tab title="iOS">
+    ```bash
+    # Install CocoaPods dependencies
+    cd ios
+    pod install
+    cd ..
+    
+    # Run on iOS simulator
+    pnpm ios
+    ```
+  </Tab>
+  
+  <Tab title="Android">
+    ```bash
+    # Run on Android emulator
+    pnpm android
+    ```
+    
+    Make sure Android Studio is installed and an emulator is running.
+  </Tab>
+  
+  <Tab title="Web">
+    ```bash
+    # Run web version
+    pnpm dev:metro
+    ```
+    
+    Then press `w` to open in browser (experimental).
+  </Tab>
+</Tabs>
+
+## Troubleshooting
+
+<Warning>
+  **Common Issues**
+  
+  - **Metro bundler fails**: Clear cache with `pnpm start --clear`
+  - **Supabase connection error**: Verify `.env` variables are correct
+  - **iOS build fails**: Run `pod install` in the `ios` directory
+  - **Android build fails**: Check Android SDK is properly installed
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/development/configuration">
+    Learn about app configuration and environment variables
+  </Card>
+  <Card title="Quick Start" icon="play" href="/quickstart">
+    Start using the app as a user
+  </Card>
+</CardGroup>

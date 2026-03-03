@@ -1,0 +1,453 @@
+---
+title: Frontend Architecture
+description: React Native and Expo app structure
+---
+
+## Overview
+
+The frontend is built with React Native 0.81.5, Expo ~54.0, and uses the New Architecture for improved performance.
+
+## Application Structure
+
+### Expo Router (File-Based Routing)
+
+Navigation is handled by Expo Router using the file system:
+
+```
+app/
+  _layout.tsx              # Root layout with providers
+  (drawer)/
+    _layout.tsx            # Drawer navigator config
+    (tabs)/
+      _layout.tsx          # Tab navigator config  
+      index.tsx            # Home screen (Inicio)
+      detalles.tsx         # Details screen
+      colaboracion.tsx     # Business onboarding
+      profile.tsx          # User profile
+```
+
+**Route Generation:**
+
+| File | Route | Screen |
+|------|-------|--------|
+| `app/(drawer)/(tabs)/index.tsx` | `/(drawer)/(tabs)/` | Home |
+| `app/(drawer)/(tabs)/detalles.tsx` | `/(drawer)/(tabs)/detalles` | Details |
+| `app/(drawer)/(tabs)/profile.tsx` | `/(drawer)/(tabs)/profile` | Profile |
+
+### Root Layout
+
+`app/_layout.tsx` configures global providers:
+
+```tsx
+export default function RootLayout() {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        refetchOnWindowFocus: false,
+        retry: 1,
+      },
+    },
+  }));
+  const [trpcClient] = useState(() => createTRPCClient());
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <trpc.Provider client={trpcClient} queryClient={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <SafeAreaProvider>
+              <HeaderCategoryProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="(drawer)" />
+                  <Stack.Screen name="oauth/callback" />
+                </Stack>
+                <StatusBar style="auto" />
+              </HeaderCategoryProvider>
+            </SafeAreaProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </trpc.Provider>
+    </GestureHandlerRootView>
+  );
+}
+```
+
+**Provider Hierarchy:**
+
+1. **GestureHandlerRootView** - Gesture handling
+2. **tRPC Provider** - Type-safe API client
+3. **QueryClientProvider** - TanStack Query
+4. **ThemeProvider** - Dark/light mode
+5. **SafeAreaProvider** - Safe area insets
+6. **HeaderCategoryProvider** - Header state
+
+## Component Architecture
+
+### Component Organization
+
+```
+components/
+  ui/                        # Primitive UI components
+    icon-symbol.tsx          # Icon wrapper
+    tipo-sitio.tsx           # Category chip
+    collapsible.tsx          # Accordion
+  screen-container.tsx       # Screen wrapper
+  sitio-relevante-card.tsx   # Place card
+  formulario-opinion.tsx     # Review form
+  estrellas-puntuacion.tsx   # Star rating
+  tipo-sitio-chip-carousel.tsx # Category filter
+  ubicacion-mapa.tsx         # Map display
+```
+
+### Reusable Components
+
+#### ScreenContainer
+
+Wrapper for all screens with safe area:
+
+```tsx
+import { ScreenContainer } from "@/components/screen-container";
+
+<ScreenContainer edges={["left", "right"]} className="flex-1">
+  {/* Screen content */}
+</ScreenContainer>
+```
+
+#### SitioRelevanteCard
+
+Place card with image, rating, and details:
+
+```tsx
+<SitioRelevanteCard
+  sitio={sitio}
+  onPress={() => router.push({
+    pathname: "/(drawer)/(tabs)/detalles",
+    params: { id: String(sitio.id) }
+  })}
+/>
+```
+
+## State Management
+
+### Server State (TanStack Query)
+
+All server data is managed by TanStack Query through custom hooks:
+
+```tsx
+function useSitiosRelevantes() {
+  const [sitios, setSitios] = useState<SitioRelevante[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchSitios = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { data, error: err } = await supabase
+        .from("sitios_relevantes")
+        .select("*");
+      if (err) throw err;
+      setSitios(data);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSitios();
+  }, [fetchSitios]);
+
+  return { sitios, loading, error, refresh: fetchSitios };
+}
+```
+
+### Client State (React Context)
+
+#### HeaderCategoryContext
+
+Manages header chip visibility:
+
+```tsx
+const HeaderCategoryContext = createContext<HeaderCategoryContextType>({
+  showChip: false,
+  categoryLabel: "Todas",
+  setHeaderChip: () => {},
+  setHeaderCategoryLabel: () => {},
+});
+
+export function HeaderCategoryProvider({ children }) {
+  const [showChip, setShowChip] = useState(false);
+  const [categoryLabel, setCategoryLabel] = useState("Todas");
+
+  return (
+    <HeaderCategoryContext.Provider value={{
+      showChip,
+      categoryLabel,
+      setHeaderChip: setShowChip,
+      setHeaderCategoryLabel: setCategoryLabel,
+    }}>
+      {children}
+    </HeaderCategoryContext.Provider>
+  );
+}
+```
+
+#### ThemeProvider
+
+Manages dark/light mode:
+
+```tsx
+import { ThemeProvider } from "@/lib/theme-provider";
+
+// Usage in component
+const { colorScheme } = useColorScheme();
+```
+
+### Local State (useState)
+
+Component-specific state:
+
+```tsx
+const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+const [form, setForm] = useState<ProfileData>(profile);
+```
+
+## Custom Hooks
+
+### Data Fetching Hooks
+
+| Hook | Purpose | Returns |
+|------|---------|----------|
+| `useAuth()` | User authentication | `{ user, loading, logout }` |
+| `useProfile()` | User profile | `{ profile, saveProfile, loading }` |
+| `useSitiosRelevantes()` | All places | `{ sitios, loading, refresh }` |
+| `useOpiniones(id)` | Reviews for place | `{ opiniones, stats, crearOpinion }` |
+| `useTiposSitio()` | Categories | `{ tipos, loading, refresh }` |
+| `useLocations()` | Provinces/municipalities | `{ provincias, municipios, ... }` |
+
+### UI Hooks
+
+| Hook | Purpose | Returns |
+|------|---------|----------|
+| `useColors()` | Theme colors | `{ primary, background, foreground, ... }` |
+| `useColorScheme()` | System theme | `{ colorScheme }` ("light" \| "dark") |
+| `useThemeColor()` | Specific theme color | `color: string` |
+
+### Implementation Example
+
+```tsx
+export function useColors() {
+  const { colorScheme } = useColorScheme();
+  
+  return useMemo(() => {
+    const isDark = colorScheme === "dark";
+    return {
+      primary: "#0ea5e9",
+      background: isDark ? "#000000" : "#ffffff",
+      surface: isDark ? "#1a1a1a" : "#f5f5f5",
+      foreground: isDark ? "#ffffff" : "#000000",
+      muted: isDark ? "#9ca3af" : "#6b7280",
+      border: isDark ? "#374151" : "#e5e7eb",
+    };
+  }, [colorScheme]);
+}
+```
+
+## Styling System
+
+### NativeWind (Tailwind CSS)
+
+Primary styling approach using className:
+
+```tsx
+<View className="flex-1 p-4 bg-background">
+  <Text className="text-lg font-bold text-foreground">
+    Hello
+  </Text>
+</View>
+```
+
+**Common Classes:**
+
+| Class | Effect |
+|-------|--------|
+| `flex-1` | flex: 1 |
+| `p-4` | padding: 16px |
+| `bg-background` | backgroundColor: theme.background |
+| `text-lg` | fontSize: 18px |
+| `font-bold` | fontWeight: "bold" |
+| `rounded-xl` | borderRadius: 12px |
+
+### StyleSheet (Dynamic Styling)
+
+For dynamic colors and complex styles:
+
+```tsx
+const colors = useColors();
+
+<View style={{ backgroundColor: colors.surface }}>
+  <Text style={{ color: colors.foreground }}>Text</Text>
+</View>
+```
+
+### Combined Approach
+
+```tsx
+<View 
+  className="p-4 rounded-xl" 
+  style={{ backgroundColor: colors.surface }}
+>
+  <Text 
+    className="text-base"
+    style={{ color: colors.foreground }}
+  >
+    Hybrid styling
+  </Text>
+</View>
+```
+
+## Navigation Patterns
+
+### Programmatic Navigation
+
+```tsx
+import { router } from "expo-router";
+
+// Push new screen
+router.push("/(drawer)/(tabs)/detalles");
+
+// Push with params
+router.push({
+  pathname: "/(drawer)/(tabs)/detalles",
+  params: { id: "123" }
+});
+
+// Update params without navigation
+router.setParams({ categoriaId: "2" });
+
+// Go back
+router.back();
+```
+
+### Reading Params
+
+```tsx
+import { useLocalSearchParams } from "expo-router";
+
+const { id, categoriaId } = useLocalSearchParams<{
+  id?: string;
+  categoriaId?: string;
+}>();
+```
+
+### Focus Effects
+
+```tsx
+import { useFocusEffect } from "@react-navigation/native";
+
+useFocusEffect(
+  useCallback(() => {
+    // Runs when screen receives focus
+    refresh();
+    
+    return () => {
+      // Cleanup when screen loses focus
+    };
+  }, [refresh])
+);
+```
+
+## Animations
+
+### React Native Reanimated
+
+Smooth 60fps animations:
+
+```tsx
+import Animated, {
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+
+const categoriesVisibility = useSharedValue(1);
+
+const scrollHandler = useAnimatedScrollHandler({
+  onScroll: (event) => {
+    const y = event.contentOffset.y;
+    if (y > 100) {
+      categoriesVisibility.value = withTiming(0, { duration: 220 });
+    } else {
+      categoriesVisibility.value = withTiming(1, { duration: 220 });
+    }
+  },
+});
+
+const animatedStyle = useAnimatedStyle(() => ({
+  opacity: categoriesVisibility.value,
+  height: 120 * categoriesVisibility.value,
+}));
+
+<Animated.View style={animatedStyle}>
+  {/* Content */}
+</Animated.View>
+```
+
+## Performance Optimizations
+
+### Memoization
+
+```tsx
+const filteredSitios = useMemo(() => {
+  return sitios.filter(s => s.provincia_id === provinciaId);
+}, [sitios, provinciaId]);
+
+const handlePress = useCallback(() => {
+  router.push("/details");
+}, []);
+```
+
+### List Optimization
+
+```tsx
+<FlatList
+  data={sitios}
+  renderItem={({ item }) => <SitioCard sitio={item} />}
+  keyExtractor={(item) => String(item.id)}
+  removeClippedSubviews
+  maxToRenderPerBatch={10}
+  windowSize={5}
+/>
+```
+
+### Image Optimization
+
+```tsx
+import { Image } from "expo-image";
+
+<Image
+  source={{ uri: imageUrl }}
+  contentFit="cover"
+  cachePolicy="memory-disk"
+  placeholder={blurhash}
+/>
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Components" icon="cube" href="/development/components">
+    Component implementation details
+  </Card>
+  <Card title="Hooks" icon="hook" href="/development/hooks">
+    Custom hooks reference
+  </Card>
+  <Card title="Navigation" icon="map" href="/development/navigation">
+    Routing and navigation
+  </Card>
+  <Card title="Theming" icon="palette" href="/development/theming">
+    Styling and themes
+  </Card>
+</CardGroup>

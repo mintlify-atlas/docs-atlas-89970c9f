@@ -1,0 +1,432 @@
+---
+title: Backend Architecture
+description: tRPC API server and Supabase integration
+---
+
+## Overview
+
+The backend consists of:
+
+1. **tRPC API Server** - Type-safe API layer (Express.js)
+2. **Supabase** - PostgreSQL database, authentication, storage
+
+## Server Structure
+
+```
+server/
+  _core/
+    index.ts           # Express server entry
+    trpc.ts            # tRPC initialization
+    context.ts         # Request context
+    oauth.ts           # OAuth handlers
+    cookies.ts         # Cookie management
+  routers.ts           # tRPC routers
+  db.ts                # Database client
+  storage.ts           # File storage
+```
+
+## tRPC Setup
+
+### Server Initialization
+
+`server/_core/trpc.ts`:
+
+```typescript
+import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
+import type { TrpcContext } from "./context";
+
+const t = initTRPC.context<TrpcContext>().create({
+  transformer: superjson,
+});
+
+export const router = t.router;
+export const publicProcedure = t.procedure;
+
+const requireUser = t.middleware(async (opts) => {
+  const { ctx, next } = opts;
+
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user,
+    },
+  });
+});
+
+export const protectedProcedure = t.procedure.use(requireUser);
+```
+
+### Context
+
+`server/_core/context.ts` - Request context with user:
+
+```typescript
+import type { Request, Response } from "express";
+import type { User } from "@/drizzle/schema";
+
+export type TrpcContext = {
+  req: Request;
+  res: Response;
+  user: User | null;
+};
+
+export async function createContext({
+  req,
+  res,
+}: {
+  req: Request;
+  res: Response;
+}): Promise<TrpcContext> {
+  // Extract user from session/token
+  const user = await getUserFromRequest(req);
+
+  return {
+    req,
+    res,
+    user,
+  };
+}
+```
+
+### Routers
+
+`server/routers.ts` - API endpoints:
+
+```typescript
+import { router, publicProcedure } from "./_core/trpc";
+import { systemRouter } from "./_core/systemRouter";
+
+export const appRouter = router({
+  system: systemRouter,
+  auth: router({
+    me: publicProcedure.query((opts) => opts.ctx.user),
+    logout: publicProcedure.mutation(({ ctx }) => {
+      ctx.res.clearCookie(COOKIE_NAME);
+      return { success: true };
+    }),
+  }),
+});
+
+export type AppRouter = typeof appRouter;
+```
+
+## Client Integration
+
+### tRPC Client
+
+`lib/trpc.ts`:
+
+```typescript
+import { createTRPCReact } from "@trpc/react-query";
+import { httpBatchLink } from "@trpc/client";
+import superjson from "superjson";
+import type { AppRouter } from "@/server/routers";
+import { getApiBaseUrl } from "@/constants/oauth";
+import * as Auth from "@/lib/_core/auth";
+
+export const trpc = createTRPCReact<AppRouter>();
+
+export function createTRPCClient() {
+  return trpc.createClient({
+    links: [
+      httpBatchLink({
+        url: `${getApiBaseUrl()}/api/trpc`,
+        transformer: superjson,
+        async headers() {
+          const token = await Auth.getSessionToken();
+          return token ? { Authorization: `Bearer ${token}` } : {};
+        },
+        fetch(url, options) {
+          return fetch(url, {
+            ...options,
+            credentials: "include",
+          });
+        },
+      }),
+    ],
+  });
+}
+```
+
+### Usage in Components
+
+```tsx
+import { trpc } from "@/lib/trpc";
+
+function UserProfile() {
+  const { data: user, isLoading } = trpc.auth.me.useQuery();
+  const logout = trpc.auth.logout.useMutation();
+
+  if (isLoading) return <Loading />;
+
+  return (
+    <View>
+      <Text>{user?.name}</Text>
+      <Button onPress={() => logout.mutate()}>
+        Logout
+      </Button>
+    </View>
+  );
+}
+```
+
+## Supabase Integration
+
+### Client Setup
+
+`lib/supabase.ts`:
+
+```typescript
+import { createClient } from "@supabase/supabase-js";
+import Constants from "expo-constants";
+
+const supabaseUrl = 
+  process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = 
+  process.env.EXPO_PUBLIC_SUPABASE_KEY ?? "";
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn("Supabase credentials not found");
+}
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+### Direct Queries
+
+Most data operations use direct Supabase queries:
+
+```typescript
+// Read
+const { data, error } = await supabase
+  .from("sitios_relevantes")
+  .select("*")
+  .eq("provincia_id", provinciaId)
+  .order("id");
+
+// Insert
+const { error } = await supabase
+  .from("opiniones")
+  .insert({
+    sitio_id: 123,
+    calificacion: 5,
+    comentario: "Excellent!",
+  });
+
+// Update
+const { error } = await supabase
+  .from("user_profiles")
+  .upsert({ user_id: "abc", name: "John" })
+  .eq("user_id", "abc");
+
+// Delete
+const { error } = await supabase
+  .from("opiniones")
+  .delete()
+  .eq("id", "opinion-id");
+```
+
+## Authentication
+
+### OAuth Flow
+
+Handled by Manus framework:
+
+1. User clicks login
+2. Redirects to OAuth provider
+3. Provider redirects to `/oauth/callback`
+4. Server exchanges code for token
+5. Sets session cookie
+6. Redirects to app
+
+### Session Management
+
+**Web (Cookie-based):**
+
+```typescript
+// Set cookie
+res.cookie(COOKIE_NAME, sessionToken, {
+  httpOnly: true,
+  secure: true,
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+});
+
+// Clear cookie
+res.clearCookie(COOKIE_NAME);
+```
+
+**Native (Token-based):**
+
+```typescript
+import * as SecureStore from "expo-secure-store";
+
+// Store token
+await SecureStore.setItemAsync("session_token", token);
+
+// Read token
+const token = await SecureStore.getItemAsync("session_token");
+
+// Delete token
+await SecureStore.deleteItemAsync("session_token");
+```
+
+## Database Schema (Drizzle)
+
+`drizzle/schema.ts` - User table:
+
+```typescript
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+
+export const users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  name: text("name"),
+  email: varchar("email", { length: 320 }),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+```
+
+<Info>
+  The `users` table is managed by Drizzle for authentication. Other tables are managed directly in Supabase.
+</Info>
+
+## API Endpoints
+
+### tRPC Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `auth.me` | Query | Get current user |
+| `auth.logout` | Mutation | Clear session |
+| `system.*` | Various | System utilities |
+
+### REST Endpoints (Express)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trpc/*` | POST | tRPC batch requests |
+| `/oauth/callback` | GET | OAuth callback handler |
+
+## Error Handling
+
+### tRPC Errors
+
+```typescript
+import { TRPCError } from "@trpc/server";
+
+if (!ctx.user) {
+  throw new TRPCError({
+    code: "UNAUTHORIZED",
+    message: "You must be logged in",
+  });
+}
+
+if (ctx.user.role !== "admin") {
+  throw new TRPCError({
+    code: "FORBIDDEN",
+    message: "Admin access required",
+  });
+}
+```
+
+### Supabase Errors
+
+```typescript
+const { data, error } = await supabase
+  .from("sitios_relevantes")
+  .select("*");
+
+if (error) {
+  console.error("Supabase error:", error);
+  throw new Error(error.message);
+}
+```
+
+## Environment Configuration
+
+### Backend (.env)
+
+```env
+NODE_ENV=development
+PORT=3000
+
+# Supabase
+SUPABASE_URL=https://xxx.supabase.co
+SUPABASE_KEY=xxx
+
+# OAuth (if using Manus auth)
+OAUTH_CLIENT_ID=xxx
+OAUTH_CLIENT_SECRET=xxx
+```
+
+### Frontend (.env)
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=xxx
+EXPO_PUBLIC_API_URL=http://localhost:3000
+```
+
+## Development Server
+
+### Starting the Server
+
+```bash
+# Development (with hot reload)
+pnpm dev:server
+
+# Production build
+pnpm build
+pnpm start
+```
+
+### Server Entry Point
+
+`server/_core/index.ts`:
+
+```typescript
+import express from "express";
+import { createExpressMiddleware } from "@trpc/server/adapters/express";
+import { appRouter } from "../routers";
+import { createContext } from "./context";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use("/api/trpc", 
+  createExpressMiddleware({
+    router: appRouter,
+    createContext,
+  })
+);
+
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
+```
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Complete database structure
+  </Card>
+  <Card title="API Routes" icon="route" href="/development/api-routes">
+    tRPC router definitions
+  </Card>
+  <Card title="Authentication" icon="lock" href="/development/authentication">
+    Auth implementation
+  </Card>
+</CardGroup>

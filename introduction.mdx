@@ -1,0 +1,102 @@
+---
+title: Por el Barrio
+description: Discover local businesses and places in your neighborhood - A community-driven local discovery platform
+---
+
+<img
+  className="block dark:hidden"
+  src="/images/hero-light.svg"
+  alt="Por el Barrio Hero Light"
+/>
+<img
+  className="hidden dark:block"
+  src="/images/hero-dark.svg"
+  alt="Por el Barrio Hero Dark"
+/>
+
+## Welcome to Por el Barrio
+
+Por el Barrio is a mobile-first application that connects people with local businesses and places in their neighborhood. Built with React Native and Expo, it provides a seamless experience for discovering, reviewing, and sharing local spots.
+
+<CardGroup cols={2}>
+  <Card
+    title="Discover Places"
+    icon="map-location-dot"
+    href="/features/discover-places"
+  >
+    Browse local businesses, restaurants, and places filtered by category and location
+  </Card>
+  <Card
+    title="Rate & Review"
+    icon="star"
+    href="/features/ratings-reviews"
+  >
+    Share your experiences with star ratings and detailed reviews
+  </Card>
+  <Card
+    title="Business Onboarding"
+    icon="building"
+    href="/business/onboarding"
+  >
+    Simple WhatsApp-based onboarding for local business owners
+  </Card>
+  <Card
+    title="Developer Guide"
+    icon="code"
+    href="/development/environment"
+  >
+    Get started with development setup and architecture overview
+  </Card>
+</CardGroup>
+
+## Tech Stack
+
+- **Frontend**: React Native, Expo, NativeWind (Tailwind CSS)
+- **Backend**: tRPC, Express.js
+- **Database**: Supabase (PostgreSQL)
+- **State Management**: TanStack Query, React Context
+- **Navigation**: Expo Router (file-based routing)
+
+## Key Features
+
+<AccordionGroup>
+  <Accordion title="Location-based Discovery">
+    Filter businesses and places by province and municipality. See only what's relevant to your area.
+  </Accordion>
+  <Accordion title="Category Filtering">
+    Browse by category: restaurants, shops, services, and more. Dynamic category chips with live counts.
+  </Accordion>
+  <Accordion title="User Profiles">
+    Personalized profiles with location preferences. Works for both authenticated and guest users.
+  </Accordion>
+  <Accordion title="Ratings System">
+    5-star rating system with detailed reviews. Calculate averages and display statistics.
+  </Accordion>
+</AccordionGroup>
+
+## Getting Started
+
+<Steps>
+  <Step title="Install Dependencies">
+    Clone the repository and install all required packages
+    ```bash
+    pnpm install
+    ```
+  </Step>
+  <Step title="Configure Environment">
+    Set up your `.env` file with Supabase credentials
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  <Step title="Run Development Server">
+    Start both the API server and Expo Metro bundler
+    ```bash
+    pnpm dev
+    ```
+  </Step>
+</Steps>
+
+<Card title="Quick Start Guide" icon="rocket" href="/quickstart">
+  Jump straight into using Por el Barrio with our quick user guide
+</Card>

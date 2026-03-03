@@ -1,0 +1,289 @@
+---
+title: Discover Places
+description: Browse and filter local businesses and places in your neighborhood
+---
+
+## Overview
+
+The place discovery feature is the core of Por el Barrio. Users can browse local businesses, filter by category and location, and view detailed information about each place.
+
+## Home Screen
+
+The home screen (`app/(drawer)/(tabs)/index.tsx`) provides the main discovery interface:
+
+```tsx
+export default function HomeScreen() {
+  const { sitios, loading, error, refresh } = useSitiosRelevantes();
+  const { tipos } = useTiposSitio();
+  const { profile } = useProfile();
+  const { provincias } = useLocations();
+  const [selectedTipoId, setSelectedTipoId] = useState<number | null>(null);
+  
+  // Filter by user's province
+  const sitiosPorProvincia = useMemo(() => {
+    if (!provinciaUsuarioId) return sitios;
+    return sitios.filter((s) => s.provincia_id === provinciaUsuarioId);
+  }, [sitios, provinciaUsuarioId]);
+  
+  // Filter by selected category
+  const sitiosFiltrados = useMemo(() => {
+    if (selectedTipoId === null) return sitiosPorProvincia;
+    return sitiosPorProvincia.filter((s) => s.tipo_sitio_id === selectedTipoId);
+  }, [sitiosPorProvincia, selectedTipoId]);
+```
+
+## Location-Based Filtering
+
+### Province Filter
+
+Places are automatically filtered by the user's selected province:
+
+<Steps>
+  <Step title="User selects province in profile">
+    The `useProfile` hook stores the province selection in Supabase.
+  </Step>
+  
+  <Step title="Home screen reads profile">
+    On mount, the home screen reads the user's province from their profile.
+  </Step>
+  
+  <Step title="Filter applied">
+    Only places matching `sitio.provincia_id === userProvinceId` are displayed.
+  </Step>
+</Steps>
+
+### Municipality Support
+
+While municipalities are stored in user profiles, they're currently used for future filtering capabilities. The current implementation filters at the province level.
+
+## Category Filtering
+
+### Category Carousel
+
+The `TipoSitioChipCarousel` component displays available categories:
+
+```tsx
+<TipoSitioChipCarousel
+  tipos={tiposDisponibles}
+  selectedTipoId={selectedTipoId}
+  onSelectTipo={handleSelectTipo}
+  countsByTipoId={countsByTipoId}
+  totalCount={totalSitios}
+/>
+```
+
+**Features:**
+- Horizontal scrollable chips
+- "Todos" (All) chip to clear filter
+- Badge showing count per category
+- Active state highlighting
+
+### Dynamic Category List
+
+Categories are filtered to show only types present in the user's province:
+
+```tsx
+const tiposDisponibles = useMemo(() => {
+  const idsPresentes = new Set(
+    sitiosPorProvincia
+      .map((s) => s.tipo_sitio_id)
+      .filter((id): id is number => id != null)
+  );
+  return tipos.filter((t) => idsPresentes.has(t.id));
+}, [sitiosPorProvincia, tipos]);
+```
+
+## Scroll Behavior
+
+### Auto-Hide Categories
+
+The category bar automatically hides when scrolling down to maximize screen space:
+
+```tsx
+const scrollHandler = useAnimatedScrollHandler({
+  onScroll: (event) => {
+    const y = event.contentOffset.y;
+    const diff = y - lastScrollY.value;
+    
+    if (diff > SCROLL_DIRECTION_THRESHOLD) {
+      // Scrolling down: hide category bar
+      categoriesVisibility.value = withTiming(0, {
+        duration: ANIMATION_DURATION,
+      });
+      runOnJS(showChipInHeader)();
+    } else if (diff < -SCROLL_DIRECTION_THRESHOLD) {
+      // Scrolling up: show category bar  
+      categoriesVisibility.value = withTiming(1, {
+        duration: ANIMATION_DURATION,
+      });
+      runOnJS(hideChipInHeader)();
+    }
+  },
+});
+```
+
+### Header Chip
+
+When categories are hidden, a chip appears in the header showing the active filter:
+
+- Uses `HeaderCategoryContext` to manage visibility
+- Displays current category label ("Todas", "Restaurant", etc.)
+- Synchronized with category selection
+
+## Place Cards
+
+### SitioRelevanteCard Component
+
+Each place is rendered using the `SitioRelevanteCard` component:
+
+```tsx
+<SitioRelevanteCard
+  key={sitio.id}
+  sitio={sitio}
+  onPress={() =>
+    router.push({
+      pathname: "/(drawer)/(tabs)/detalles",
+      params: { id: String(sitio.id) },
+    })
+  }
+/>
+```
+
+**Displays:**
+- Place image or placeholder emoji
+- Place name
+- Category chip (overlay on image)
+- Average rating with stars
+- Description (3 lines max)
+- Address
+
+### Rating Display
+
+Cards show aggregated ratings using the `EstrellasPuntuacion` component:
+
+```tsx
+{stats.total > 0 && (
+  <EstrellasPuntuacion
+    promedio={stats.promedio}
+    total={stats.total}
+    size={14}
+    showNumber
+    showTotal
+  />
+)}
+```
+
+## Data Flow
+
+<Steps>
+  <Step title="Fetch All Places">
+    `useSitiosRelevantes` hook fetches all places from Supabase on mount.
+    
+    ```tsx
+    const { data } = await supabase
+      .from("sitios_relevantes")
+      .select("id, nombre, localizacion, descripcion, imagenes, ...")
+      .order("id", { ascending: true });
+    ```
+  </Step>
+  
+  <Step title="Fetch Categories">
+    `useTiposSitio` hook fetches all available categories.
+    
+    ```tsx
+    const { data } = await supabase
+      .from("tipos_sitio")
+      .select("id, tipo, descripcion")
+      .order("tipo");
+    ```
+  </Step>
+  
+  <Step title="Apply Filters">
+    Home screen applies location and category filters using `useMemo`.
+  </Step>
+  
+  <Step title="Render Cards">
+    Filtered places are mapped to `SitioRelevanteCard` components.
+  </Step>
+</Steps>
+
+## Loading & Error States
+
+### Loading State
+
+```tsx
+{loading && (
+  <View className="py-12 items-center">
+    <ActivityIndicator size="large" color={colors.primary} />
+    <Text className="text-sm mt-3 text-muted">
+      Cargando sitios...
+    </Text>
+  </View>
+)}
+```
+
+### Error State
+
+```tsx
+{error && (
+  <View className="py-6 rounded-2xl p-4" style={{ backgroundColor: colors.surface }}>
+    <Text className="text-sm text-foreground mb-2">{error}</Text>
+    <TouchableOpacity onPress={refresh}>
+      <Text>Reintentar</Text>
+    </TouchableOpacity>
+  </View>
+)}
+```
+
+### Empty States
+
+```tsx
+{sitiosPorProvincia.length === 0 ? (
+  <Text className="text-sm text-muted py-4">
+    {profile.province
+      ? `No hay sitios relevantes en ${profile.province} por ahora.`
+      : "No hay sitios relevantes por ahora."}
+  </Text>
+) : null}
+```
+
+## Refresh Behavior
+
+The home screen refreshes data when it receives focus:
+
+```tsx
+useFocusEffect(
+  useCallback(() => {
+    refreshProfile();
+    refresh(); // Refresh places to update ratings after creating a review
+  }, [refreshProfile, refresh])
+);
+```
+
+<Info>
+  This ensures that when a user returns from the details screen after writing a review, the ratings on cards are updated.
+</Info>
+
+## Performance Optimizations
+
+- **Memoized filtering**: All filters use `useMemo` to prevent unnecessary recalculations
+- **Optimized re-renders**: Category selection updates URL params without re-fetching data
+- **Image lazy loading**: Images use Expo Image with `contentFit="cover"` for optimized loading
+- **Animated scroll**: Uses `react-native-reanimated` for smooth 60fps animations
+
+## Related Components
+
+<CardGroup cols={2}>
+  <Card title="SitioRelevanteCard" icon="id-card" href="/api/sitio-relevante-card">
+    Component API reference
+  </Card>
+  <Card title="TipoSitioChipCarousel" icon="sliders" href="/development/components">
+    Category filter component
+  </Card>
+  <Card title="useSitiosRelevantes" icon="hook" href="/api/use-sitios-relevantes">
+    Data fetching hook
+  </Card>
+  <Card title="EstrellasPuntuacion" icon="star" href="/api/estrellas-puntuacion">
+    Rating display component
+  </Card>
+</CardGroup>

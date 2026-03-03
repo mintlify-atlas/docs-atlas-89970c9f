@@ -1,0 +1,104 @@
+---
+title: useProfile Hook
+description: User profile management hook
+---
+
+## Import
+
+```tsx
+import { useProfile } from "@/hooks/use-profile";
+```
+
+## Usage
+
+```tsx
+const {
+  profile,
+  loading,
+  saving,
+  error,
+  saveProfile,
+  refresh,
+} = useProfile();
+```
+
+## Return Values
+
+### profile
+
+```typescript
+ProfileData
+```
+
+Current profile data:
+
+```typescript
+type ProfileData = {
+  name: string;
+  email: string;
+  province: string;
+  municipality: string;
+};
+```
+
+### loading
+
+```typescript
+boolean
+```
+
+True while loading profile.
+
+### saving
+
+```typescript
+boolean
+```
+
+True while saving profile.
+
+### error
+
+```typescript
+string | null
+```
+
+Error message if any.
+
+### saveProfile
+
+```typescript
+(data: ProfileData) => Promise<void>
+```
+
+Saves profile changes.
+
+### refresh
+
+```typescript
+() => Promise<void>
+```
+
+Refreshes profile data.
+
+## Example
+
+```tsx
+function EditProfile() {
+  const { profile, saveProfile, saving } = useProfile();
+  const [name, setName] = useState(profile.name);
+
+  const handleSave = async () => {
+    await saveProfile({ ...profile, name });
+  };
+
+  return (
+    <View>
+      <TextInput value={name} onChangeText={setName} />
+      <Button onPress={handleSave} disabled={saving}>
+        Save
+      </Button>
+    </View>
+  );
+}
+```

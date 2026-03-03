@@ -1,0 +1,62 @@
+---
+title: Authentication
+description: OAuth and session management
+---
+
+## Authentication System
+
+### useAuth Hook
+
+```tsx
+import { useAuth } from "@/hooks/use-auth";
+
+const { user, loading, isAuthenticated, logout } = useAuth();
+```
+
+**Returns:**
+- `user`: Current user object or null
+- `loading`: Boolean loading state
+- `isAuthenticated`: Boolean auth status
+- `logout`: Logout function
+
+### User Object
+
+```typescript
+type User = {
+  id: string;
+  openId: string;
+  name: string;
+  email: string;
+  loginMethod: string;
+  lastSignedIn: Date;
+};
+```
+
+## Guest Mode
+
+Users can use the app without authentication:
+
+```typescript
+// Guest ID stored in AsyncStorage
+const guestId = `guest_${Date.now()}_${random()}`;
+```
+
+## Session Management
+
+### Web (Cookies)
+
+```typescript
+res.cookie(COOKIE_NAME, token, {
+  httpOnly: true,
+  secure: true,
+  maxAge: 30 * 24 * 60 * 60 * 1000
+});
+```
+
+### Native (Secure Storage)
+
+```typescript
+import * as SecureStore from "expo-secure-store";
+
+await SecureStore.setItemAsync("session_token", token);
+```

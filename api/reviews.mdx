@@ -1,0 +1,71 @@
+---
+title: Reviews API
+description: Customer reviews and ratings
+---
+
+## useOpiniones Hook
+
+```tsx
+import { useOpiniones } from "@/hooks/use-opiniones";
+
+const {
+  opiniones,
+  stats,
+  loading,
+  error,
+  refresh,
+  crearOpinion,
+} = useOpiniones(sitioId);
+```
+
+## Types
+
+```typescript
+type Opinion = {
+  id: string;
+  sitio_id: number;
+  calificacion: number;
+  comentario: string | null;
+  autor_texto: string | null;
+  creado_at: string;
+};
+
+type OpinionStats = {
+  promedio: number;
+  total: number;
+  distribucion: { [key: number]: number };
+};
+```
+
+## Methods
+
+### crearOpinion
+
+```tsx
+await crearOpinion(
+  sitioId,
+  calificacion,
+  comentario,
+  autorTexto
+);
+```
+
+Creates a new review.
+
+### refresh
+
+```tsx
+await refresh();
+```
+
+Refetches reviews.
+
+## Example
+
+```tsx
+const { opiniones, stats, crearOpinion } = useOpiniones(123);
+
+const handleSubmit = async () => {
+  await crearOpinion(123, 5, "Great place!", "John Doe");
+};
+```

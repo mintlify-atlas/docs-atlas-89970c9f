@@ -1,0 +1,127 @@
+---
+title: SitioRelevanteCard Component
+description: Place card component reference
+---
+
+## Import
+
+```tsx
+import { SitioRelevanteCard } from "@/components/sitio-relevante-card";
+```
+
+## Usage
+
+```tsx
+<SitioRelevanteCard
+  sitio={sitio}
+  onPress={() => router.push("/detalles")}
+/>
+```
+
+## Props
+
+### sitio
+
+```typescript
+SitioRelevante (required)
+```
+
+Place object to display:
+
+```typescript
+type SitioRelevante = {
+  id: number;
+  nombre: string;
+  descripcion: string | null;
+  imagenes: string | null;
+  tipo_sitio_id: number | null;
+  direccion: string | null;
+  // ... other fields
+};
+```
+
+### onPress
+
+```typescript
+() => void (optional)
+```
+
+Callback when card is pressed.
+
+## Features
+
+- **Image Display**: Shows first image or placeholder emoji
+- **Category Chip**: Overlay chip showing place type
+- **Rating Stars**: Average rating with count
+- **Description**: Truncated to 3 lines
+- **Address**: Location display
+
+## Example
+
+```tsx
+function PlacesList() {
+  const { sitios } = useSitiosRelevantes();
+
+  return (
+    <View>
+      {sitios.map(sitio => (
+        <SitioRelevanteCard
+          key={sitio.id}
+          sitio={sitio}
+          onPress={() => {
+            router.push({
+              pathname: "/detalles",
+              params: { id: String(sitio.id) }
+            });
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+```
+
+## Styling
+
+The card uses:
+- `colors.surface` for background
+- `colors.border` for border
+- Rounded corners (rounded-2xl)
+- Shadow/elevation
+
+## Implementation
+
+From `components/sitio-relevante-card.tsx`:
+
+```tsx
+export function SitioRelevanteCard({ sitio, onPress }: Props) {
+  const colors = useColors();
+  const { tipos } = useTiposSitio();
+  const { stats } = useOpiniones(sitio.id);
+  const imagenUrl = getFirstImageUrl(sitio.imagenes);
+
+  const tipoSitio = sitio.tipo_sitio_id
+    ? tipos.find(t => t.id === sitio.tipo_sitio_id)
+    : null;
+
+  return (
+    <TouchableOpacity onPress={onPress}>
+      <View style={{ backgroundColor: colors.surface }}>
+        {/* Image */}
+        {imagenUrl && <Image source={{ uri: imagenUrl }} />}
+        
+        {/* Category chip */}
+        {tipoSitio && <TipoSitioChip tipo={tipoSitio} overlay />}
+        
+        {/* Content */}
+        <View>
+          <Text>{sitio.nombre}</Text>
+          {stats.total > 0 && <EstrellasPuntuacion {...stats} />}
+          {sitio.descripcion && <Text>{sitio.descripcion}</Text>}
+          {sitio.direccion && <Text>{sitio.direccion}</Text>}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+}
+```

@@ -1,0 +1,70 @@
+---
+title: Hooks
+description: Custom React hooks reference
+---
+
+## Data Hooks
+
+### useSitiosRelevantes
+
+```tsx
+const { sitios, loading, error, refresh } = useSitiosRelevantes();
+```
+
+Fetches all places from Supabase.
+
+### useOpiniones
+
+```tsx
+const { opiniones, stats, crearOpinion, refresh } = useOpiniones(sitioId);
+```
+
+Manages reviews for a place.
+
+### useProfile
+
+```tsx
+const { profile, loading, saveProfile } = useProfile();
+```
+
+User profile management.
+
+### useAuth
+
+```tsx
+const { user, loading, logout } = useAuth();
+```
+
+Authentication state.
+
+### useTiposSitio
+
+```tsx
+const { tipos, loading, refresh } = useTiposSitio();
+```
+
+Fetches categories.
+
+### useLocations
+
+```tsx
+const { provincias, municipios, fetchMunicipios } = useLocations();
+```
+
+Location data.
+
+## UI Hooks
+
+### useColors
+
+```tsx
+const colors = useColors();
+// { primary, background, surface, foreground, muted, border }
+```
+
+### useColorScheme
+
+```tsx
+const { colorScheme } = useColorScheme();
+// "light" | "dark"
+```

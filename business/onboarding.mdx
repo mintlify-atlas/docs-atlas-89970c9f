@@ -1,0 +1,355 @@
+---
+title: Business Onboarding
+description: WhatsApp-based onboarding flow for local business owners
+---
+
+## Overview
+
+Por el Barrio provides a simple, WhatsApp-based onboarding process for local business owners who want to list their businesses in the app. This approach makes it accessible to owners who may not be tech-savvy.
+
+## Onboarding Flow
+
+The onboarding process is handled through the **Colaboración** tab (`app/(drawer)/(tabs)/colaboracion.tsx`):
+
+<Steps>
+  <Step title="Download Request Form">
+    Business owner downloads an Excel form with all required fields.
+  </Step>
+  
+  <Step title="Fill Out Form">
+    Owner completes the form with their business information.
+  </Step>
+  
+  <Step title="Send via WhatsApp">
+    Owner sends the completed form to the developer via WhatsApp.
+  </Step>
+  
+  <Step title="Review & Approval">
+    Developer reviews the submission and adds the business to the database.
+  </Step>
+</Steps>
+
+## Screen Implementation
+
+### Configuration
+
+```tsx
+const URL_SOLICITUD =
+  "https://djxvosobflwtryenqoou.supabase.co/storage/v1/object/public/descargas/Solicitud.xlsx";
+const WHATSAPP_NUMERO = "5352708602";
+const URL_WHATSAPP = `https://wa.me/${WHATSAPP_NUMERO}`;
+```
+
+**Configuration Values:**
+- `URL_SOLICITUD`: Direct download link for the Excel form (hosted on Supabase Storage)
+- `WHATSAPP_NUMERO`: Developer's WhatsApp number (international format, no +)
+- `URL_WHATSAPP`: WhatsApp API deep link
+
+### Screen Layout
+
+```tsx
+export default function ColaboracionScreen() {
+  const colors = useColors();
+
+  const handleDescargarSolicitud = () => {
+    Linking.openURL(URL_SOLICITUD);
+  };
+
+  const handleEnviarWhatsApp = () => {
+    const mensaje =
+      "Hola, me gustaria que mi negocio o emprendimiento aparezca en la aplicación. Aqui envio el formulario";
+    const mensajeCodificado = encodeURIComponent(mensaje);
+    const urlWhatsApp = `${URL_WHATSAPP}?text=${mensajeCodificado}`;
+
+    Linking.openURL(urlWhatsApp);
+  };
+
+  return (
+    <ScreenContainer>
+      <ScrollView>
+        <View style={styles.header}>
+          <Text style={styles.title}>Incluye tu negocio</Text>
+          <Text style={styles.subtitle}>
+            ¿Tienes un negocio o emprendimiento y quieres aparecer en Por el
+            Barrio? Solicita aquí la inclusión de tu negocio en la aplicación.
+          </Text>
+        </View>
+
+        {/* Step 1: Download */}
+        <View style={styles.card}>
+          <Text style={styles.stepLabel}>Paso 1</Text>
+          <Text style={styles.stepTitle}>Descarga la solicitud</Text>
+          <Text style={styles.stepText}>
+            Descarga el archivo de solicitud en formato Excel, complétalo con
+            los datos de tu negocio y guárdalo en tu dispositivo.
+          </Text>
+          <TouchableOpacity
+            onPress={handleDescargarSolicitud}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>Descargar Solicitud.xlsx</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Step 2: Send via WhatsApp */}
+        <View style={styles.card}>
+          <Text style={styles.stepLabel}>Paso 2</Text>
+          <Text style={styles.stepTitle}>Envíala por WhatsApp</Text>
+          <Text style={styles.stepText}>
+            Una vez completada la solicitud, envíala al desarrollador por
+            WhatsApp. Te atenderemos lo antes posible.
+          </Text>
+          <TouchableOpacity
+            onPress={handleEnviarWhatsApp}
+            style={[styles.button, { backgroundColor: "#25D366" }]}
+          >
+            <Text style={styles.buttonText}>Abrir WhatsApp</Text>
+          </TouchableOpacity>
+          <Text style={styles.hint}>Número: +53 527 086 02</Text>
+        </View>
+      </ScrollView>
+    </ScreenContainer>
+  );
+}
+```
+
+## Request Form
+
+### Form Structure
+
+The Excel form (`Solicitud.xlsx`) includes these fields:
+
+<Tabs>
+  <Tab title="Basic Info">
+    - **Nombre del negocio** (Business name)
+    - **Descripción** (Description)
+    - **Tipo de sitio** (Category: Restaurant, Shop, Service, etc.)
+  </Tab>
+  
+  <Tab title="Contact">
+    - **Teléfono** (Phone number)
+    - **Email** (Optional)
+    - **Dirección** (Physical address)
+  </Tab>
+  
+  <Tab title="Location">
+    - **Provincia** (Province)
+    - **Municipio** (Municipality)
+    - **Localización** (GPS coordinates: latitude,longitude)
+  </Tab>
+  
+  <Tab title="Media">
+    - **Imágenes** (Image URLs, comma-separated)
+    - **Ofertas** (Special offers or promotions)
+    - **Menús** (Menu information, if applicable)
+  </Tab>
+</Tabs>
+
+### Form Template
+
+The form is stored in Supabase Storage:
+
+```
+https://<project>.supabase.co/storage/v1/object/public/descargas/Solicitud.xlsx
+```
+
+<Info>
+  You'll need to upload the Excel template to your Supabase Storage bucket named `descargas` with public access.
+</Info>
+
+## WhatsApp Integration
+
+### Deep Link Format
+
+The app uses the WhatsApp URL scheme to open a conversation:
+
+```tsx
+const WHATSAPP_NUMERO = "5352708602"; // No + symbol
+const mensaje = "Hola, me gustaria que mi negocio...";
+const mensajeCodificado = encodeURIComponent(mensaje);
+const url = `https://wa.me/${WHATSAPP_NUMERO}?text=${mensajeCodificado}`;
+```
+
+**URL Format:**
+```
+https://wa.me/5352708602?text=Hola%2C%20me%20gustaria...
+```
+
+### Platform Behavior
+
+<Tabs>
+  <Tab title="iOS">
+    Opens WhatsApp app if installed, otherwise opens WhatsApp Web in Safari.
+  </Tab>
+  
+  <Tab title="Android">
+    Opens WhatsApp app if installed, otherwise prompts to install or opens WhatsApp Web.
+  </Tab>
+  
+  <Tab title="Web">
+    Opens WhatsApp Web in a new tab.
+  </Tab>
+</Tabs>
+
+### Pre-filled Message
+
+The WhatsApp message is pre-filled with:
+
+```
+Hola, me gustaria que mi negocio o emprendimiento aparezca en la aplicación. Aqui envio el formulario
+```
+
+The user can attach the Excel file manually in WhatsApp.
+
+## Developer Workflow
+
+When the developer receives a submission:
+
+<Steps>
+  <Step title="Receive Form">
+    Form arrives via WhatsApp with business information.
+  </Step>
+  
+  <Step title="Validate Data">
+    - Verify all required fields are complete
+    - Check GPS coordinates are valid
+    - Ensure images are accessible
+    - Confirm province/municipality exist in database
+  </Step>
+  
+  <Step title="Add to Database">
+    Insert into `sitios_relevantes` table via Supabase dashboard or SQL:
+    
+    ```sql
+    INSERT INTO sitios_relevantes (
+      nombre, descripcion, tipo_sitio_id, telefono,
+      direccion, provincia_id, municipio_id, localizacion,
+      imagenes, ofertas, menus
+    ) VALUES (
+      'El Buen Sabor',
+      'Restaurante de comida criolla',
+      1, -- Restaurant category
+      '53123456',
+      'Calle 23 #456, Vedado',
+      '1', -- La Habana
+      '101', -- Plaza de la Revolución
+      '23.13194,-82.38304',
+      'https://example.com/image1.jpg,https://example.com/image2.jpg',
+      'Descuento 10% en almuerzos',
+      NULL
+    );
+    ```
+  </Step>
+  
+  <Step title="Notify Owner">
+    Send confirmation message via WhatsApp that the business has been added.
+  </Step>
+</Steps>
+
+## Styling
+
+### Color Scheme
+
+```tsx
+const styles = StyleSheet.create({
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 16,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  button: {
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: colors.primary, // Or #25D366 for WhatsApp
+  },
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+});
+```
+
+### WhatsApp Brand Color
+
+The WhatsApp button uses the official brand color:
+
+```tsx
+style={{ backgroundColor: "#25D366" }}
+```
+
+## Improvements & Future Enhancements
+
+<AccordionGroup>
+  <Accordion title="In-App Form">
+    Replace Excel download with an in-app form that submits directly to a queue for approval.
+    
+    ```tsx
+    const handleSubmit = async (formData) => {
+      await supabase.from('business_submissions').insert({
+        nombre: formData.nombre,
+        // ...
+        status: 'pending'
+      });
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Image Upload">
+    Allow business owners to upload images directly from their device:
+    
+    ```tsx
+    import * as ImagePicker from 'expo-image-picker';
+    
+    const pickImage = async () => {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+      });
+      // Upload to Supabase Storage
+    };
+    ```
+  </Accordion>
+  
+  <Accordion title="Admin Dashboard">
+    Web-based admin panel for reviewing and approving submissions without manual SQL.
+  </Accordion>
+  
+  <Accordion title="Auto-Approval">
+    Implement automatic approval for certain criteria (e.g., verified phone number).
+  </Accordion>
+</AccordionGroup>
+
+## Accessibility
+
+<Check>
+  **Simple Process**: Two-step process is easy to understand and complete.
+</Check>
+
+<Check>
+  **Familiar Tool**: WhatsApp is widely used and familiar to business owners.
+</Check>
+
+<Check>
+  **No Account Required**: Owners don't need to create an account or log in.
+</Check>
+
+<Check>
+  **Offline-Friendly**: Form can be filled out offline and sent when connected.
+</Check>
+
+## Related
+
+<CardGroup cols={2}>
+  <Card title="Requirements" icon="list-check" href="/business/requirements">
+    Detailed requirements for business listings
+  </Card>
+  <Card title="Database Schema" icon="database" href="/development/database-schema">
+    Structure of sitios_relevantes table
+  </Card>
+</CardGroup>

@@ -1,23 +1,11 @@
 {
-  "$schema": "https://mintlify.com/docs.json",
-  "name": "Por el Barrio",
+  "projectType": "saas",
+  "projectName": "Por el Barrio",
+  "projectDescription": "A mobile app for discovering and rating local businesses and places in your neighborhood.",
   "theme": "almond",
-  "colors": {
-    "primary": "#DC2626",
-    "light": "#FBBF24",
-    "dark": "#991B1B"
-  },
-  "navbar": {
-    "primary": {
-      "type": "github",
-      "href": "https://github.com/KsPr71/el-barrio"
-    }
-  },
-  "footer": {
-    "socials": {
-      "github": "https://github.com/KsPr71/el-barrio"
-    }
-  },
+  "primaryColor": "#DC2626",
+  "lightColor": "#FBBF24",
+  "darkColor": "#991B1B",
   "navigation": {
     "tabs": [
       {
@@ -107,8 +95,7 @@
               "api/use-auth",
               "api/use-profile",
               "api/use-sitios-relevantes",
-              "api/use-opiniones",
-              "api/use-tipos-sitio"
+              "api/use-opiniones"
             ]
           },
           {
@@ -116,13 +103,37 @@
             "pages": [
               "api/sitio-relevante-card",
               "api/formulario-opinion",
-              "api/estrellas-puntuacion",
-              "api/tipo-sitio-chip-carousel",
-              "api/screen-container"
+              "api/estrellas-puntuacion"
             ]
           }
         ]
       }
     ]
-  }
+  },
+  "keyFeatures": [
+    "Location-based business discovery filtered by province",
+    "Category filtering for different types of establishments",
+    "Star ratings and review system for businesses",
+    "User profiles with province selection",
+    "Business onboarding via WhatsApp integration",
+    "Full-stack React Native app with Expo",
+    "tRPC API with type-safe procedures",
+    "Drizzle ORM with MySQL database",
+    "OAuth authentication with Manus"
+  ],
+  "publicApiSurface": [
+    "trpc.auth.me",
+    "trpc.auth.logout",
+    "useAuth()",
+    "useProfile()",
+    "useSitiosRelevantes()",
+    "useOpiniones()",
+    "useTiposSitio()",
+    "useLocations()",
+    "SitioRelevanteCard",
+    "FormularioOpinion",
+    "EstrellasPuntuacion",
+    "TipoSitioChipCarousel",
+    "ScreenContainer"
+  ]
 }

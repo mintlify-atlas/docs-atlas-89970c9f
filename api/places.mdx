@@ -1,0 +1,57 @@
+---
+title: Places API
+description: Business listings data
+---
+
+## useSitiosRelevantes Hook
+
+```tsx
+import { useSitiosRelevantes } from "@/hooks/use-sitios-relevantes";
+
+const { sitios, loading, error, refresh } = useSitiosRelevantes();
+```
+
+## Type
+
+```typescript
+type SitioRelevante = {
+  id: number;
+  nombre: string;
+  localizacion: string;
+  descripcion: string | null;
+  imagenes: string | null;
+  ofertas: string | null;
+  tipo_sitio_id: number | null;
+  direccion: string | null;
+  telefono: number | null;
+  contador_opiniones: number;
+  provincia_id: string | null;
+  municipio_id: string | null;
+};
+```
+
+## Methods
+
+### refresh
+
+```tsx
+await refresh();
+```
+
+Refetches all places.
+
+## Example
+
+```tsx
+const { sitios, loading } = useSitiosRelevantes();
+
+if (loading) return <Loading />;
+
+return (
+  <View>
+    {sitios.map(sitio => (
+      <SitioRelevanteCard key={sitio.id} sitio={sitio} />
+    ))}
+  </View>
+);
+```

@@ -1,0 +1,86 @@
+---
+title: Database Schema
+description: Supabase PostgreSQL tables
+---
+
+## Core Tables
+
+### sitios_relevantes
+
+Business listings:
+
+```sql
+CREATE TABLE sitios_relevantes (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  nombre VARCHAR(255) NOT NULL,
+  descripcion TEXT,
+  tipo_sitio_id INT,
+  provincia_id VARCHAR(10),
+  municipio_id VARCHAR(10),
+  localizacion VARCHAR(100),
+  direccion VARCHAR(255),
+  telefono BIGINT,
+  imagenes TEXT,
+  ofertas TEXT
+);
+```
+
+### opiniones
+
+Customer reviews:
+
+```sql
+CREATE TABLE opiniones (
+  id UUID PRIMARY KEY,
+  sitio_id INT REFERENCES sitios_relevantes(id),
+  calificacion INT CHECK (calificacion BETWEEN 1 AND 5),
+  comentario TEXT,
+  autor_texto VARCHAR(255),
+  creado_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+### user_profiles
+
+User data:
+
+```sql
+CREATE TABLE user_profiles (
+  user_id VARCHAR(255) PRIMARY KEY,
+  name VARCHAR(255),
+  email VARCHAR(255),
+  province VARCHAR(100),
+  municipality VARCHAR(100)
+);
+```
+
+## Location Tables
+
+### provincia
+
+```sql
+CREATE TABLE provincia (
+  id VARCHAR(10) PRIMARY KEY,
+  nombre VARCHAR(100)
+);
+```
+
+### municipio
+
+```sql
+CREATE TABLE municipio (
+  id VARCHAR(10) PRIMARY KEY,
+  nombre VARCHAR(100),
+  provincia_id VARCHAR(10) REFERENCES provincia(id)
+);
+```
+
+### tipos_sitio
+
+```sql
+CREATE TABLE tipos_sitio (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  tipo VARCHAR(100),
+  descripcion TEXT
+);
+```

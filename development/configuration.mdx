@@ -1,0 +1,93 @@
+---
+title: Configuration
+description: App configuration and environment setup
+---
+
+## Configuration Files
+
+Por el Barrio uses several configuration files:
+
+### app.json
+
+Expo app configuration:
+
+```json
+{
+  "expo": {
+    "name": "por-el-barrio",
+    "slug": "por-el-barrio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "porelbarrio",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE"
+      }
+    }
+  }
+}
+```
+
+### package.json
+
+Key dependencies:
+
+```json
+{
+  "dependencies": {
+    "expo": "~54.0.33",
+    "react-native": "0.81.5",
+    "@supabase/supabase-js": "^2.49.4",
+    "@trpc/client": "11.7.2",
+    "nativewind": "^4.2.1"
+  }
+}
+```
+
+### Environment Variables
+
+`.env` file structure:
+
+```env
+EXPO_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
+EXPO_PUBLIC_SUPABASE_KEY=your-anon-key
+```
+
+## Supabase Configuration
+
+### Client Initialization
+
+`lib/supabase.ts`:
+
+```typescript
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_KEY ?? "";
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+```
+
+### Row Level Security
+
+Enable RLS policies in Supabase dashboard.
+
+## Theme Configuration
+
+Colors defined in `hooks/use-colors.ts`:
+
+```typescript
+return {
+  primary: "#0ea5e9",
+  background: isDark ? "#000000" : "#ffffff",
+  surface: isDark ? "#1a1a1a" : "#f5f5f5",
+  foreground: isDark ? "#ffffff" : "#000000",
+  muted: isDark ? "#9ca3af" : "#6b7280",
+  border: isDark ? "#374151" : "#e5e7eb",
+};
+```
